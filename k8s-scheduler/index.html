@@ -1440,7 +1440,7 @@
       <div class="control-deck">
         <button class="audio-toggle active" id="audio-toggle-btn" onclick="toggleAudio()" title="Toggle Audio Effects">🔊</button>
         
-        <div class="auto-mode-wrapper">
+        <div class="auto-mode-wrapper" id="auto-schedule-preview-wrapper">
           <label class="checkbox-container" style="margin-bottom: 0;">
             <input type="checkbox" id="auto-schedule-opt" checked onchange="handleAutoScheduleToggle()">
             <div class="custom-check"></div>
@@ -2556,8 +2556,8 @@
         if (quizAttempt >= 10) {
           showQuizModal();
         } else {
-          generateRandomQuizQuestion();
           currentQuizPhase = 'guess';
+          generateRandomQuizQuestion();
           deployBtn.innerText = "🚀 SUBMIT GUESS";
         }
         return;
@@ -2857,6 +2857,7 @@
         quizBtn.classList.remove('active');
         settingsContainer.classList.remove('locked');
         document.getElementById('lock-banner').style.display = 'none';
+        document.getElementById('auto-schedule-preview-wrapper').style.display = 'flex';
         
         quizAttempt = 0;
         quizScore = 0;
@@ -2877,6 +2878,7 @@
         quizBtn.classList.add('active');
         settingsContainer.classList.add('locked');
         document.getElementById('lock-banner').style.display = 'block';
+        document.getElementById('auto-schedule-preview-wrapper').style.display = 'none';
         
         quizAttempt = 0;
         quizScore = 0;
