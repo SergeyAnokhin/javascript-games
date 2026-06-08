@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>K8s Advanced Scheduler Telemetry Simulator</title>
-  <meta name="description" content="An interactive, gamified simulator of the Kubernetes scheduling engine. Deploy multiple pods, adjust node capacities, configure affinity rules, and see placement decisions in real-time.">
+  <meta name="description" content="An interactive, gamified simulator of the Kubernetes scheduling engine. Deploy multiple pods, adjust node capacities, configure affinity rules, and play the scheduling quiz game.">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -217,6 +217,40 @@
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    /* Quiz Lock Settings Container (Legible & Clean) */
+    .quiz-lock-container {
+      position: relative;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 5px;
+      transition: all 0.3s ease;
+    }
+
+    .quiz-lock-container.locked {
+      pointer-events: none; /* disables input changes */
+      border: 1.5px solid rgba(255, 179, 0, 0.35);
+      background: rgba(255, 179, 0, 0.02);
+      box-shadow: 0 0 15px rgba(255, 179, 0, 0.06);
+    }
+
+    /* Change spec styling when locked to show it is read-only, but keep it highly readable */
+    .quiz-lock-container.locked .cyber-slider::-webkit-slider-thumb {
+      background: var(--amber) !important;
+      box-shadow: 0 0 8px var(--amber-glow) !important;
+    }
+    
+    .quiz-lock-container.locked .checkbox-container input:checked + .custom-check {
+      background: var(--amber) !important;
+      border-color: var(--amber) !important;
+      box-shadow: 0 0 8px var(--amber-glow) !important;
+    }
+
+    /* Disable interactions on node configurations in Quiz mode or during scheduling */
+    .node-card.locked-node-specs .node-meta-grid,
+    .node-card.locked-node-specs .node-controls {
+      pointer-events: none;
     }
 
     /* Cyber Buttons Group & Actions */
@@ -636,6 +670,19 @@
       position: relative;
       padding: 4px;
       overflow: hidden;
+      cursor: pointer;
+    }
+
+    .pending-slot:hover {
+      border-color: var(--pink);
+      background: rgba(255, 0, 127, 0.08);
+      box-shadow: 0 0 10px rgba(255, 0, 127, 0.15);
+    }
+
+    .pending-slot.selected {
+      border-color: var(--pink) !important;
+      background: rgba(255, 0, 127, 0.15) !important;
+      box-shadow: 0 0 15px var(--pink-glow) !important;
     }
 
     .pending-slot.targeting {
@@ -673,8 +720,8 @@
     }
 
     .node-card.selected {
-      border-color: var(--cyan);
-      box-shadow: 0 0 15px rgba(0, 242, 254, 0.2), inset 0 0 10px rgba(0, 242, 254, 0.05);
+      border-color: var(--cyan) !important;
+      box-shadow: 0 0 15px rgba(0, 242, 254, 0.4) !important;
     }
 
     .node-card.evaluating-target {
@@ -689,9 +736,9 @@
     }
 
     .node-card.scanning {
-      border-color: var(--amber);
-      box-shadow: 0 0 20px var(--amber-glow);
-      animation: nodeScan 0.5s infinite alternate;
+      border-color: var(--amber) !important;
+      box-shadow: 0 0 20px var(--amber-glow) !important;
+      animation: nodeScan 0.5s infinite alternate !important;
     }
 
     @keyframes nodeScan {
@@ -711,9 +758,9 @@
     }
 
     .node-card.winner-node {
-      border-color: var(--lime);
-      box-shadow: 0 0 25px var(--lime-glow);
-      animation: winnerPulse 1.5s infinite;
+      border-color: var(--lime) !important;
+      box-shadow: 0 0 25px var(--lime-glow) !important;
+      animation: winnerPulse 1.5s infinite !important;
     }
 
     @keyframes winnerPulse {
@@ -1270,6 +1317,67 @@
       transform: translateY(0);
     }
 
+    /* Final Quiz Grade Modal */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(4, 7, 15, 0.95);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-box {
+      background: var(--panel-bg);
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 35px var(--cyan-glow);
+      border-radius: 12px;
+      width: 480px;
+      padding: 30px;
+      text-align: center;
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+    }
+
+    .modal-backdrop.active .modal-box {
+      transform: scale(1);
+    }
+
+    .modal-box h2 {
+      font-size: 24px;
+      color: var(--cyan);
+      text-shadow: 0 0 10px var(--cyan-glow);
+      margin-bottom: 15px;
+    }
+
+    .modal-rank {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--lime);
+      text-shadow: 0 0 10px var(--lime-glow);
+      margin: 20px 0 10px 0;
+      letter-spacing: 1px;
+    }
+
+    .modal-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 25px;
+      padding: 0 10px;
+    }
+
     /* Responsive adjustments */
     @media (max-width: 990px) {
       .dashboard-grid {
@@ -1311,7 +1419,21 @@
     <!-- Left panel (Configurator) -->
     <aside class="panel configurator-panel">
       <div class="panel-header">
-        <h2>⚙️ POD SPECIFICATION</h2>
+        <h2>⚙️ CONTROL DECK</h2>
+      </div>
+
+      <!-- Mode Selector and Stats -->
+      <div class="settings-group" style="padding: 12px; margin-bottom: 15px;">
+        <h3 style="margin-bottom: 8px;">🎮 Telemetry Game Mode</h3>
+        <div class="button-selector-group" id="mode-selector" style="margin-bottom: 8px;">
+          <button class="selector-btn active" onclick="setMode('sandbox')">🛠️ Sandbox</button>
+          <button class="selector-btn" onclick="setMode('quiz')">🏆 Quiz-10</button>
+        </div>
+        <div id="quiz-stats-row" style="display: flex; justify-content: space-between; font-size: 11px; font-family: 'Orbitron', sans-serif; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px;">
+          <span>Attempt: <strong id="quiz-attempt-val" style="color: var(--cyan);">0 / 10</strong></span>
+          <span>Score: <strong id="quiz-score-val" style="color: var(--lime);">0 / 0</strong></span>
+          <span>Accuracy: <strong id="quiz-acc-val" style="color: var(--amber);">0%</strong></span>
+        </div>
       </div>
 
       <!-- Sound & Speed control deck -->
@@ -1327,91 +1449,97 @@
         </div>
       </div>
       
-      <!-- Pod Profile Inputs -->
-      <div class="settings-group">
-        <h3>🆔 Pod Template Identity</h3>
-        <div class="slider-container" style="margin-bottom: 0;">
-          <div class="slider-label-row">
-            <span>Dynamic Name</span>
-          </div>
-          <input type="text" id="pod-name" readonly style="width:100%; background:rgba(6,9,19,0.8); border:1px solid var(--border-color); color:var(--cyan); padding:8px 12px; border-radius:6px; outline:none; font-family:monospace; font-size:12px; font-weight:bold; box-shadow: inset 0 0 5px rgba(0,0,0,0.5);" title="Auto-generated name based on pod properties">
+      <!-- Pod Profile Inputs Lockable Wrapper -->
+      <div class="quiz-lock-container" id="quiz-lock-settings">
+        <div class="lock-banner" id="lock-banner" style="display: none; background: rgba(255, 179, 0, 0.15); border: 1px solid var(--amber); color: var(--amber); padding: 8px 12px; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 15px; box-shadow: 0 0 10px rgba(255,179,0,0.1); text-shadow: 0 0 5px rgba(255,179,0,0.3);">
+          🔒 QUIZ PARAMETERS LOCKED
         </div>
+        <div class="settings-group">
+          <h3>🆔 Pod Template Identity</h3>
+          <div class="slider-container" style="margin-bottom: 0;">
+            <div class="slider-label-row">
+              <span>Dynamic Name</span>
+            </div>
+            <input type="text" id="pod-name" readonly style="width:100%; background:rgba(6,9,19,0.8); border:1px solid var(--border-color); color:var(--cyan); padding:8px 12px; border-radius:6px; outline:none; font-family:monospace; font-size:11px; font-weight:bold; box-shadow: inset 0 0 5px rgba(0,0,0,0.5);" title="Auto-generated name based on pod properties">
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3>⚡ Resource Requests</h3>
+          
+          <div class="slider-container">
+            <div class="slider-label-row">
+              <span>CPU Request ⚙️</span>
+              <span id="pod-cpu-val">2.0 Cores</span>
+            </div>
+            <input type="range" class="cyber-slider" id="pod-cpu-req" min="0.5" max="8" step="0.5" value="2" oninput="handleParamChange()">
+          </div>
+
+          <div class="slider-container" style="margin-bottom: 0;">
+            <div class="slider-label-row">
+              <span>Memory Request 💾</span>
+              <span id="pod-ram-val">4.0 GB</span>
+            </div>
+            <input type="range" class="cyber-slider" id="pod-ram-req" min="0.5" max="16" step="0.5" value="4" oninput="handleParamChange()">
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3>🛑 Filtering (Predicates)</h3>
+          
+          <div style="margin-bottom: 15px;">
+            <label class="select-label">Node Affinity (Required Zone) 🌍</label>
+            <div class="button-selector-group" id="zone-selector">
+              <button class="selector-btn active" data-val="any" onclick="setZoneAffinity('any')">Any Zone 🌍</button>
+              <button class="selector-btn zone-a" data-val="zone-a" onclick="setZoneAffinity('zone-a')">Zone-A 🔴</button>
+              <button class="selector-btn zone-b" data-val="zone-b" onclick="setZoneAffinity('zone-b')">Zone-B 🟢</button>
+              <button class="selector-btn zone-c" data-val="zone-c" onclick="setZoneAffinity('zone-c')">Zone-C 🔵</button>
+            </div>
+            <input type="hidden" id="pod-node-affinity" value="any">
+          </div>
+
+          <label class="checkbox-container">
+            <input type="checkbox" id="pod-anti-db" onchange="handleParamChange()">
+            <div class="custom-check"></div>
+            <span>Anti-Affinity: Avoid [DB] Pods 🗄️</span>
+          </label>
+
+          <label class="checkbox-container" style="margin-bottom: 0;">
+            <input type="checkbox" id="pod-tolerate-gpu" onchange="handleParamChange()">
+            <div class="custom-check"></div>
+            <span>Toleration: Allow GPU Taint 🎫</span>
+          </label>
+        </div>
+
+        <div class="settings-group">
+          <h3>☁️ Scoring (Priorities)</h3>
+          
+          <div style="margin-bottom: 15px;">
+            <label class="select-label">Preferred Disk Type ⚡</label>
+            <div class="button-selector-group" id="disk-pref-selector">
+              <button class="selector-btn active" data-val="any" onclick="setDiskPreference('any')">Any Disk 🌍</button>
+              <button class="selector-btn" data-val="ssd" onclick="setDiskPreference('ssd')">SSD ⚡</button>
+              <button class="selector-btn" data-val="hdd" onclick="setDiskPreference('hdd')">HDD 💾</button>
+            </div>
+            <input type="hidden" id="pod-preferred-disk" value="any">
+          </div>
+
+          <label class="checkbox-container">
+            <input type="checkbox" id="pod-pref-web" onchange="handleParamChange()">
+            <div class="custom-check"></div>
+            <span>PodAffinity: Near [Web] (+30 pts) 🌐</span>
+          </label>
+
+          <label class="checkbox-container" style="margin-bottom: 0;">
+            <input type="checkbox" id="pod-balance-resources" checked onchange="handleParamChange()">
+            <div class="custom-check"></div>
+            <span>Balanced Allocation Score (+50 pts) ⚖️</span>
+          </label>
+        </div>
+
       </div>
 
-      <div class="settings-group">
-        <h3>⚡ Resource Requests</h3>
-        
-        <div class="slider-container">
-          <div class="slider-label-row">
-            <span>CPU Request ⚙️</span>
-            <span id="pod-cpu-val">2.0 Cores</span>
-          </div>
-          <input type="range" class="cyber-slider" id="pod-cpu-req" min="0.5" max="8" step="0.5" value="2" oninput="handleParamChange()">
-        </div>
-
-        <div class="slider-container" style="margin-bottom: 0;">
-          <div class="slider-label-row">
-            <span>Memory Request 💾</span>
-            <span id="pod-ram-val">4.0 GB</span>
-          </div>
-          <input type="range" class="cyber-slider" id="pod-ram-req" min="0.5" max="16" step="0.5" value="4" oninput="handleParamChange()">
-        </div>
-      </div>
-
-      <div class="settings-group">
-        <h3>🛑 Filtering (Predicates)</h3>
-        
-        <div style="margin-bottom: 15px;">
-          <label class="select-label">Node Affinity (Required Zone) 🌍</label>
-          <div class="button-selector-group" id="zone-selector">
-            <button class="selector-btn active" data-val="any" onclick="setZoneAffinity('any')">Any Zone 🌍</button>
-            <button class="selector-btn zone-a" data-val="zone-a" onclick="setZoneAffinity('zone-a')">Zone-A 🔴</button>
-            <button class="selector-btn zone-b" data-val="zone-b" onclick="setZoneAffinity('zone-b')">Zone-B 🟢</button>
-            <button class="selector-btn zone-c" data-val="zone-c" onclick="setZoneAffinity('zone-c')">Zone-C 🔵</button>
-          </div>
-          <input type="hidden" id="pod-node-affinity" value="any">
-        </div>
-
-        <label class="checkbox-container">
-          <input type="checkbox" id="pod-anti-db" onchange="handleParamChange()">
-          <div class="custom-check"></div>
-          <span>Anti-Affinity: Avoid [DB] Pods 🗄️</span>
-        </label>
-
-        <label class="checkbox-container" style="margin-bottom: 0;">
-          <input type="checkbox" id="pod-tolerate-gpu" onchange="handleParamChange()">
-          <div class="custom-check"></div>
-          <span>Toleration: Allow GPU Taint 🎫</span>
-        </label>
-      </div>
-
-      <div class="settings-group">
-        <h3>☁️ Scoring (Priorities)</h3>
-        
-        <div style="margin-bottom: 15px;">
-          <label class="select-label">Preferred Disk Type ⚡</label>
-          <div class="button-selector-group" id="disk-pref-selector">
-            <button class="selector-btn active" data-val="any" onclick="setDiskPreference('any')">Any Disk 🌍</button>
-            <button class="selector-btn" data-val="ssd" onclick="setDiskPreference('ssd')">SSD ⚡</button>
-            <button class="selector-btn" data-val="hdd" onclick="setDiskPreference('hdd')">HDD 💾</button>
-          </div>
-          <input type="hidden" id="pod-preferred-disk" value="any">
-        </div>
-
-        <label class="checkbox-container">
-          <input type="checkbox" id="pod-pref-web" onchange="handleParamChange()">
-          <div class="custom-check"></div>
-          <span>PodAffinity: Near [Web] (+30 pts) 🌐</span>
-        </label>
-
-        <label class="checkbox-container" style="margin-bottom: 0;">
-          <input type="checkbox" id="pod-balance-resources" checked onchange="handleParamChange()">
-          <div class="custom-check"></div>
-          <span>Balanced Allocation Score (+50 pts) ⚖️</span>
-        </label>
-      </div>
-
-      <!-- Trigger actions group -->
+      <!-- Trigger actions group (Outside locked specs container) -->
       <div class="action-buttons-group">
         <button class="cyber-btn run-btn" id="run-scheduler-btn" onclick="triggerDeployment()">🚀 DEPLOY POD</button>
         <button class="cyber-btn reset-btn" id="reset-cluster-btn" onclick="resetCluster()">🧹 RESET CLUSTER</button>
@@ -1441,7 +1569,7 @@
           <h2>🖥️ ACTIVE CLUSTER TOPOLOGY</h2>
           <div class="pending-queue-wrapper">
             <span>PENDING ZONE ⚠️:</span>
-            <div id="pending-slot" class="pending-slot" title="If pod cannot be scheduled, it goes here."></div>
+            <div id="pending-slot" class="pending-slot" onclick="selectNode('pending')" title="If pod cannot be scheduled, it goes here."></div>
           </div>
         </div>
         
@@ -1482,6 +1610,20 @@
 
   <!-- Notification Toast -->
   <div class="toast" id="toast-notify">MANIFEST COPIED TO CLIPBOARD</div>
+
+  <!-- Final Quiz Grade Modal -->
+  <div class="modal-backdrop" id="quiz-modal">
+    <div class="modal-box">
+      <h2>🏆 QUIZ COMPLETED</h2>
+      <div style="font-size: 14px; color: var(--text-muted);">Your Scheduler Telemetry Accuracy Rank:</div>
+      <div class="modal-rank" id="quiz-modal-rank">K8S CLUSTER ARCHITECT</div>
+      <div style="font-size: 32px; font-weight: 800; color: var(--cyan); margin: 10px 0;" id="quiz-modal-score">9 / 10</div>
+      <p class="modal-desc" id="quiz-modal-desc">
+        Incredible! You have demonstrated absolute mastery of Kubernetes scheduler predicates, taints, affinity configurations, and resource balance scoring algorithms.
+      </p>
+      <button class="cyber-btn run-btn" onclick="closeQuizModal()">🎮 RESTART QUIZ</button>
+    </div>
+  </div>
 
   <!-- Script logic -->
   <script>
@@ -1570,7 +1712,7 @@
       }
     }
 
-    // Default Node configurations (NVMe disk removed)
+    // Default Node configurations
     const initialNodes = [
       {
         id: 1,
@@ -1609,7 +1751,7 @@
         id: 4,
         name: "node-4",
         zone: "zone-b",
-        disk: "ssd", // changed from nvme to ssd
+        disk: "ssd",
         taint: "none",
         pods: ["db", "web"],
         cpuCap: 16.0,
@@ -1626,12 +1768,20 @@
     let previewWinnerNodeId = null;
     let currentYamlSubtab = 'pod';
     let currentTab = 'logs';
+    
+    // Quiz details variables
+    let appMode = 'sandbox'; // 'sandbox' or 'quiz'
+    let quizAttempt = 0;
+    let quizScore = 0;
+    let userGuessNodeId = null; // Node marked as guess
+    let currentQuizPhase = 'guess'; // 'guess' or 'next'
 
     // UI Initialisation
     window.addEventListener('DOMContentLoaded', () => {
       resetNodesArray();
       initClusterUI();
       handleParamChange();
+      updateStatsUI();
     });
 
     function resetNodesArray() {
@@ -1815,6 +1965,7 @@
 
     // Adjust capacity sliders on a Node
     function adjustNodeResource(nodeId, type, val) {
+      if (appMode === 'quiz' || isScheduling || currentQuizPhase === 'next') return;
       const node = nodes.find(n => n.id === nodeId);
       if (!node) return;
 
@@ -1836,6 +1987,7 @@
     // Toggle interactive badges on node card
     function cycleZone(nodeId, e) {
       e.stopPropagation();
+      if (appMode === 'quiz' || isScheduling || currentQuizPhase === 'next') return;
       const node = nodes.find(n => n.id === nodeId);
       if (!node) return;
       
@@ -1853,6 +2005,7 @@
     // Cycle Disk type (SSD, HDD only, NVMe removed)
     function cycleDisk(nodeId, e) {
       e.stopPropagation();
+      if (appMode === 'quiz' || isScheduling || currentQuizPhase === 'next') return;
       const node = nodes.find(n => n.id === nodeId);
       if (!node) return;
 
@@ -1867,8 +2020,10 @@
       handleParamChange();
     }
 
+    // Toggle taint
     function toggleTaint(nodeId, e) {
       e.stopPropagation();
+      if (appMode === 'quiz' || isScheduling || currentQuizPhase === 'next') return;
       const node = nodes.find(n => n.id === nodeId);
       if (!node) return;
 
@@ -1886,8 +2041,10 @@
       handleParamChange();
     }
 
+    // Toggle workload pod types on node
     function toggleExistingPod(nodeId, podType, e) {
       e.stopPropagation();
+      if (appMode === 'quiz' || isScheduling || currentQuizPhase === 'next') return;
       const node = nodes.find(n => n.id === nodeId);
       if (!node) return;
 
@@ -1904,12 +2061,86 @@
     }
 
     function selectNode(nodeId) {
-      selectedNodeId = nodeId;
-      document.querySelectorAll('.node-card').forEach(card => card.classList.remove('selected'));
-      document.getElementById(`node-${nodeId}`).classList.add('selected');
+      if (isScheduling) return;
+      if (appMode === 'quiz' && currentQuizPhase === 'next') return;
+      
+      if (appMode === 'quiz') {
+        userGuessNodeId = nodeId; // set guess node ID
+        
+        // Clean previous guess indicators on node cards
+        document.querySelectorAll('.node-card').forEach(card => {
+          card.classList.remove('selected');
+          const gb = card.querySelector('.guess-badge');
+          if (gb) gb.remove();
+        });
+
+        // Clean previous guess indicators on pending slot
+        const pendingSlot = document.getElementById('pending-slot');
+        pendingSlot.classList.remove('selected');
+        const pendingGb = pendingSlot.querySelector('.guess-badge');
+        if (pendingGb) pendingGb.remove();
+        
+        if (nodeId === 'pending') {
+          pendingSlot.classList.add('selected');
+          pendingSlot.insertAdjacentHTML('beforeend', `<span class="guess-badge" style="position: absolute; bottom: 2px; right: 2px; background: var(--pink); color: #000; font-family: 'Orbitron', sans-serif; font-size: 7px; font-weight: 800; padding: 1px 3px; border-radius: 2px; box-shadow: 0 0 5px var(--pink-glow);">🎯 GUESS</span>`);
+        } else {
+          const selectedCard = document.getElementById(`node-${nodeId}`);
+          if (selectedCard) {
+            selectedCard.classList.add('selected');
+            // Inject Guess target tag
+            selectedCard.insertAdjacentHTML('beforeend', `<span class="guess-badge" style="position: absolute; bottom: 8px; right: 8px; background: var(--cyan); color: #000; font-family: 'Orbitron', sans-serif; font-size: 8px; font-weight: 800; padding: 2px 5px; border-radius: 3px; box-shadow: 0 0 5px var(--cyan);">🎯 GUESS</span>`);
+          }
+        }
+      } else {
+        // Sandbox mode: just select the node for YAML manifest view
+        if (nodeId === 'pending') return; // Pending slot doesn't have a node YAML
+        selectedNodeId = nodeId;
+        
+        document.querySelectorAll('.node-card').forEach(card => {
+          card.classList.remove('selected');
+        });
+        
+        const selectedCard = document.getElementById(`node-${nodeId}`);
+        if (selectedCard) {
+          selectedCard.classList.add('selected');
+        }
+      }
       
       synth.click();
       updateYamlView();
+    }
+
+    function shouldShowPreview() {
+      if (appMode === 'quiz') {
+        return (currentQuizPhase !== 'guess');
+      }
+      return document.getElementById('auto-schedule-opt').checked;
+    }
+
+    function showGuessInstructions() {
+      const pName = document.getElementById('pod-name').value;
+      const logBox = document.getElementById('log-box');
+      if (appMode === 'quiz') {
+        logBox.innerHTML = `<span class="log-info">📝 <b>QUIZ QUESTION ${quizAttempt + 1} / 10</b></span>\n` +
+          `<span class="log-info">[QUIZ] Target: Placement of Pod <b>${pName}</b></span>\n` +
+          `<span class="log-info">--------------------------------------------------------</span>\n` +
+          `<span class="log-info">👉 <b>HOW TO ANSWER:</b></span>\n` +
+          `<span class="log-info">1. Examine pod specifications and node meters.</span>\n` +
+          `<span class="log-info">2. Click the Node card where this pod will land.</span>\n` +
+          `<span class="log-info">3. Click <b>🚀 SUBMIT GUESS</b> to verify.</span>\n`;
+        document.getElementById('stat-status').innerText = "WAITING GUESS";
+        document.getElementById('stat-status').style.color = "var(--amber)";
+      } else {
+        logBox.innerHTML = `<span class="log-info">🛠️ <b>SANDBOX SIMULATOR MODE</b></span>\n` +
+          `<span class="log-info">[SANDBOX] Target: Placement of Pod <b>${pName}</b></span>\n` +
+          `<span class="log-info">--------------------------------------------------------</span>\n` +
+          `<span class="log-info">👉 <b>HOW TO DEPLOY:</b></span>\n` +
+          `<span class="log-info">1. Configure pod parameters and node settings.</span>\n` +
+          `<span class="log-info">2. Click <b>🚀 DEPLOY POD</b> to run the scheduler.</span>\n`;
+        document.getElementById('stat-status').innerText = "WAITING DEPLOY";
+        document.getElementById('stat-status').style.color = "var(--cyan)";
+      }
+      logBox.scrollTop = logBox.scrollHeight;
     }
 
     // Refresh UI parameters and recalculate placement preview
@@ -1925,18 +2156,49 @@
 
       updateGeneratedPodName();
       
-      // Update nodes text metrics and preview overlays
+      // Update nodes text metrics and preview overlays (Neutral styles enforced during guessing)
+      const showPrev = shouldShowPreview();
       nodes.forEach(node => {
         updateNodeUI(node.id);
-        updateNodePreviewBars(node, pCpu, pRam);
+        if (showPrev) {
+          updateNodePreviewBars(node, pCpu, pRam);
+        }
       });
-
+      
+      resetNodeCardVisuals();
+      updateNodeSpecsLockState();
+      
       updateYamlView();
 
-      const isAuto = document.getElementById('auto-schedule-opt').checked;
-      if (isAuto) {
-        runSchedulerPreview();
-      }
+      calculatePreviewWinner();
+    }
+
+    function resetNodeCardVisuals() {
+      document.querySelectorAll('.node-card').forEach(card => {
+        const isSelected = (appMode === 'quiz' && userGuessNodeId && card.id === `node-${userGuessNodeId}`) ||
+                           (appMode === 'sandbox' && selectedNodeId && card.id === `node-${selectedNodeId}`);
+        if (isSelected) {
+          card.className = 'node-card selected';
+        } else {
+          card.className = 'node-card';
+        }
+        card.querySelector('.status-indicator').className = 'status-indicator idle';
+        card.querySelector('.score-badge').style.display = 'none';
+      });
+    }
+
+    function updateNodeSpecsLockState() {
+      const shouldLock = (appMode === 'quiz' || isScheduling || (appMode === 'quiz' && currentQuizPhase === 'next'));
+      nodes.forEach(node => {
+        const card = document.getElementById(`node-${node.id}`);
+        if (card) {
+          if (shouldLock) {
+            card.classList.add('locked-node-specs');
+          } else {
+            card.classList.remove('locked-node-specs');
+          }
+        }
+      });
     }
 
     // UI Updates for a single node card
@@ -2064,7 +2326,6 @@
     }
 
     // CORE SCHEDULING CALCULATION ENGINE
-    // Evaluates predicates and scores for all nodes, returns logs and details
     function evaluateClusterScheduling(
       podName, podCpu, podRam, reqZone, preferredDisk, tolerateGpu, avoidDb, prefBalance, prefWeb
     ) {
@@ -2129,7 +2390,7 @@
           eligibleNodes.push(node);
           log += `<span class="log-success">✔️ Node ${node.name.toUpperCase()}: Passed filtering predicates.</span>\n`;
         } else {
-          log += `<span class="log-error">❌ Node ${node.name.toUpperCase()}: Rejected! Reason: ${reasons.join(', ')}</span>\n`;
+          log += `<span class="log-error">❌ Node ${node.name.toUpperCase()}: Failed filtering predicates! Reason: ${reasons.join(', ')}</span>\n`;
         }
       });
       
@@ -2139,7 +2400,7 @@
       }
       
       // 2. Priorities (Scoring)
-      log += `\n<span class="log-info">[SCORE] Running scoring plugins on candidates...</span>\n`;
+      log += `\n<span class="log-info">[SCORE] Running scoring priorities on candidates...</span>\n`;
       let maxScore = -1;
       let winner = null;
       
@@ -2203,12 +2464,12 @@
         }
       });
       
-      log += `\n<span class="log-success">🎉 [RESULT] Scheduler selected target: <b>${winner.name.toUpperCase()}</b> (Highest Score: ${maxScore})</span>\n`;
+      log += `\n<span class="log-success">🎉 [RESULT] Selected target node: <b>${winner.name.toUpperCase()}</b> (Highest Score: ${maxScore})</span>\n`;
       return { winnerId: winner.id, logs: log, results: nodeResults };
     }
 
-    // Predicts the target node placement for Preview
-    function runSchedulerPreview() {
+    // Mathematical evaluation for preview
+    function calculatePreviewWinner() {
       const podName = document.getElementById('pod-name').value;
       const podCpu = parseFloat(document.getElementById('pod-cpu-req').value);
       const podRam = parseFloat(document.getElementById('pod-ram-req').value);
@@ -2225,70 +2486,84 @@
       
       previewWinnerNodeId = evalData.winnerId;
       
-      // Update logs console
-      const logBox = document.getElementById('log-box');
-      logBox.innerHTML = evalData.logs;
-      logBox.scrollTop = logBox.scrollHeight;
-      
-      // Reset card visual classes
-      document.querySelectorAll('.node-card').forEach(card => {
-        card.classList.remove('filter-passed', 'filter-failed', 'winner-node', 'evaluating-target');
-        card.querySelector('.status-indicator').className = 'status-indicator idle';
-        card.querySelector('.score-badge').style.display = 'none';
-      });
-      
-      // Update visual indicators based on evaluation results
-      nodes.forEach(node => {
-        const card = document.getElementById(`node-${node.id}`);
-        const statusLED = card.querySelector('.status-indicator');
-        const nodeRes = evalData.results[node.id];
+      if (shouldShowPreview()) {
+        // Update logs console
+        const logBox = document.getElementById('log-box');
+        logBox.innerHTML = evalData.logs;
+        logBox.scrollTop = logBox.scrollHeight;
         
-        if (nodeRes.passed) {
-          card.classList.add('filter-passed');
-          statusLED.className = 'status-indicator success';
-          
-          if (evalData.winnerId) {
-            const badge = card.querySelector('.score-badge');
-            badge.style.display = 'block';
-            badge.innerText = `Score: ${nodeRes.score}`;
-          }
+        if (evalData.winnerId) {
+          document.getElementById('stat-status').innerText = "PREVIEW READY";
+          document.getElementById('stat-status').style.color = "var(--cyan)";
         } else {
-          card.classList.add('filter-failed');
-          statusLED.className = 'status-indicator failed';
+          document.getElementById('stat-status').innerText = "PENDING PREVIEW";
+          document.getElementById('stat-status').style.color = "var(--pink)";
         }
-      });
-      
-      if (evalData.winnerId) {
-        document.getElementById(`node-${evalData.winnerId}`).classList.add('evaluating-target');
-        document.getElementById('stat-status').innerText = "PREVIEW READY";
-        document.getElementById('stat-status').style.color = "var(--cyan)";
+
+        // Draw live node highlights, LEDs, and score badges in Sandbox Mode preview
+        nodes.forEach(node => {
+          const card = document.getElementById(`node-${node.id}`);
+          if (!card) return;
+          
+          const statusLED = card.querySelector('.status-indicator');
+          const scoreBadge = card.querySelector('.score-badge');
+          const nodeRes = evalData.results[node.id];
+          
+          // Clean previous card state classes (preserve 'selected' state if active)
+          const isSelected = card.classList.contains('selected');
+          card.className = isSelected ? 'node-card selected' : 'node-card';
+          
+          if (nodeRes.passed) {
+            card.classList.add('filter-passed');
+            statusLED.className = 'status-indicator success';
+            
+            scoreBadge.style.display = 'block';
+            scoreBadge.innerText = `Score: ${nodeRes.score}`;
+            
+            if (node.id === evalData.winnerId) {
+              card.classList.add('winner-node');
+            }
+          } else {
+            card.classList.add('filter-failed');
+            statusLED.className = 'status-indicator failed';
+            scoreBadge.style.display = 'none';
+          }
+        });
       } else {
-        document.getElementById('stat-status').innerText = "PENDING PREVIEW";
-        document.getElementById('stat-status').style.color = "var(--pink)";
+        showGuessInstructions();
       }
     }
 
-    // Deploy action
+    // Deploy action trigger
     function triggerDeployment() {
       if (isScheduling) return;
       
-      const isAutoMode = document.getElementById('auto-schedule-opt').checked;
-      
-      if (isAutoMode) {
-        // Runs preview evaluation instantly and fires flight animation directly
-        runSchedulerPreview();
-        executeActualDeploy(previewWinnerNodeId);
-      } else {
-        // Run full step-by-step scanning telemetry
-        runSchedulerManualWorkflow();
+      // Next attempt/question phase transition (Quiz mode only)
+      if (appMode === 'quiz' && currentQuizPhase === 'next') {
+        synth.click();
+        
+        userGuessNodeId = null;
+        document.querySelectorAll('.guess-badge').forEach(b => b.remove());
+        document.querySelectorAll('.node-card').forEach(c => c.classList.remove('selected'));
+        
+        const pendingSlot = document.getElementById('pending-slot');
+        if (pendingSlot) pendingSlot.classList.remove('selected');
+        
+        const deployBtn = document.getElementById('run-scheduler-btn');
+        
+        toggleInteractiveElements(false);
+        
+        if (quizAttempt >= 10) {
+          showQuizModal();
+        } else {
+          generateRandomQuizQuestion();
+          currentQuizPhase = 'guess';
+          deployBtn.innerText = "🚀 SUBMIT GUESS";
+        }
+        return;
       }
-    }
-
-    // Async Manual step-by-step scanner workflow (with evaluation logs output)
-    async function runSchedulerManualWorkflow() {
-      isScheduling = true;
-      toggleInteractiveElements(true);
       
+      // Guess validation phase
       const podName = document.getElementById('pod-name').value;
       const podCpu = parseFloat(document.getElementById('pod-cpu-req').value);
       const podRam = parseFloat(document.getElementById('pod-ram-req').value);
@@ -2299,209 +2574,255 @@
       const prefBalance = document.getElementById('pod-balance-resources').checked;
       const prefWeb = document.getElementById('pod-pref-web').checked;
 
+      // Runs calculation specs
       const evalData = evaluateClusterScheduling(
         podName, podCpu, podRam, reqZone, preferredDisk, tolerateGpu, avoidDb, prefBalance, prefWeb
       );
       
+      const actualWinnerId = evalData.winnerId;
+
+      // Guesses validation checks (Quiz Mode only)
+      if (appMode === 'quiz' && userGuessNodeId === null) {
+        synth.fail();
+        const toast = document.getElementById('toast-notify');
+        toast.innerText = "🎯 SELECT A TARGET NODE FIRST!";
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+        return;
+      }
+
+      runDeploymentWorkflow(evalData, actualWinnerId, podName, podCpu, podRam);
+    }
+
+    // Runs deployment scanning and animations
+    async function runDeploymentWorkflow(evalData, actualWinnerId, podName, podCpu, podRam) {
+      isScheduling = true;
+      toggleInteractiveElements(true);
+      updateNodeSpecsLockState();
+      
+      // Draw the potential resource preview bars now that guessing is complete!
+      nodes.forEach(node => {
+        updateNodePreviewBars(node, podCpu, podRam);
+      });
+      
+      const isAutoMode = document.getElementById('auto-schedule-opt').checked;
+      const flightDuration = isAutoMode ? 350 : 700;
+      
       const logBox = document.getElementById('log-box');
       logBox.innerHTML = `<span class="log-info">[INIT] 🚀 Starting kube-scheduler deployment cycle...</span>\n`;
-      logBox.innerHTML += `<span class="log-info">[INIT] Deploying Pod: <b>${podName}</b> (CPU: ${podCpu} Cores, Memory: ${podRam} GB)</span>\n`;
-      logBox.innerHTML += `<span class="log-info">========================================================</span>\n`;
+      logBox.innerHTML += `========================================================\n`;
       
       document.getElementById('stat-status').innerText = "EVALUATING";
       document.getElementById('stat-status').style.color = "var(--amber)";
       document.getElementById('pod-deck-container').classList.add('evaluating');
       
-      // Reset visuals
-      document.querySelectorAll('.node-card').forEach(card => {
-        card.classList.remove('scanning', 'filter-passed', 'filter-failed', 'winner-node', 'evaluating-target');
-        card.querySelector('.status-indicator').className = 'status-indicator evaluating';
-        card.querySelector('.score-badge').style.display = 'none';
-      });
-
-      // Filter step
-      logBox.innerHTML += `<span class="log-info">[FILTER] 🛑 Executing filtering predicates...</span>\n`;
-      
-      for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        const card = document.getElementById(`node-${node.id}`);
-        card.classList.add('scanning');
-        
-        synth.tick();
-        await sleep(350);
-        
-        card.classList.remove('scanning');
-        
-        const nodeRes = evalData.results[node.id];
-        const statusLED = card.querySelector('.status-indicator');
-        
-        if (nodeRes.passed) {
-          card.classList.add('filter-passed');
-          statusLED.className = 'status-indicator success';
-          logBox.innerHTML += `<span class="log-success">✔️ Node ${node.name.toUpperCase()}: Passed filtering predicates.</span>\n`;
-        } else {
-          card.classList.add('filter-failed');
-          statusLED.className = 'status-indicator failed';
-          logBox.innerHTML += `<span class="log-error">❌ Node ${node.name.toUpperCase()}: Failed filtering predicates! Reasons: ${nodeRes.reasons.join(', ')}</span>\n`;
+      // Node evaluation visual scans (revealed during submit phase!)
+      if (isAutoMode) {
+        // Fast reveal
+        nodes.forEach(node => {
+          const card = document.getElementById(`node-${node.id}`);
+          const statusLED = card.querySelector('.status-indicator');
+          const nodeRes = evalData.results[node.id];
+          
+          if (nodeRes.passed) {
+            card.classList.add('filter-passed');
+            statusLED.className = 'status-indicator success';
+            
+            if (actualWinnerId) {
+              const badge = card.querySelector('.score-badge');
+              badge.style.display = 'block';
+              badge.innerText = `Score: ${nodeRes.score}`;
+            }
+          } else {
+            card.classList.add('filter-failed');
+            statusLED.className = 'status-indicator failed';
+          }
+        });
+      } else {
+        // Step-by-step scanner
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+          const card = document.getElementById(`node-${node.id}`);
+          card.classList.add('scanning');
+          
+          synth.tick();
+          await sleep(350);
+          
+          card.classList.remove('scanning');
+          
+          const nodeRes = evalData.results[node.id];
+          const statusLED = card.querySelector('.status-indicator');
+          
+          if (nodeRes.passed) {
+            card.classList.add('filter-passed');
+            statusLED.className = 'status-indicator success';
+            logBox.innerHTML += `<span class="log-success">✔️ Node ${node.name.toUpperCase()}: Passed filtering predicates.</span>\n`;
+          } else {
+            card.classList.add('filter-failed');
+            statusLED.className = 'status-indicator failed';
+            logBox.innerHTML += `<span class="log-error">❌ Node ${node.name.toUpperCase()}: Failed filtering predicates! Reasons: ${nodeRes.reasons.join(', ')}</span>\n`;
+          }
+          logBox.scrollTop = logBox.scrollHeight;
         }
         
-        logBox.scrollTop = logBox.scrollHeight;
-      }
-      
-      await sleep(350);
-
-      // Scoring step
-      if (!evalData.winnerId) {
-        logBox.innerHTML += `\n<span class="log-error">⚠️ [RESULT] Placement failed. Out of cluster resources. Pod in PENDING state.</span>\n`;
-        logBox.scrollTop = logBox.scrollHeight;
-        executeActualDeploy(null);
-        return;
-      }
-      
-      logBox.innerHTML += `\n<span class="log-info">[SCORE] ⚖️ Executing scoring priorities...</span>\n`;
-      
-      for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        const nodeRes = evalData.results[node.id];
-        if (!nodeRes.passed) continue;
+        await sleep(250);
         
-        const card = document.getElementById(`node-${node.id}`);
-        const score = nodeRes.score;
-        const scoreBadge = card.querySelector('.score-badge');
-        scoreBadge.style.display = 'block';
-        scoreBadge.innerText = 'Score: 0';
-        
-        synth.tick();
-        
-        // Count up score visually
-        let currentCount = 0;
-        const step = Math.ceil(score / 8);
-        while (currentCount < score) {
-          currentCount = Math.min(score, currentCount + step);
-          scoreBadge.innerText = `Score: ${currentCount}`;
-          await sleep(40);
+        // Reveal scores
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+          const nodeRes = evalData.results[node.id];
+          if (!nodeRes.passed) continue;
+          
+          const card = document.getElementById(`node-${node.id}`);
+          const score = nodeRes.score;
+          const scoreBadge = card.querySelector('.score-badge');
+          scoreBadge.style.display = 'block';
+          scoreBadge.innerText = 'Score: 0';
+          
+          synth.tick();
+          
+          let currentCount = 0;
+          const step = Math.ceil(score / 8);
+          while (currentCount < score) {
+            currentCount = Math.min(score, currentCount + step);
+            scoreBadge.innerText = `Score: ${currentCount}`;
+            await sleep(40);
+          }
+          
+          logBox.innerHTML += `<span class="log-score">⚖️ Node ${node.name.toUpperCase()}: Total Score = <b>${score}</b> [Breakdown: ${nodeRes.breakdown.join(', ') || 'none'}]</span>\n`;
+          logBox.scrollTop = logBox.scrollHeight;
         }
-        
-        logBox.innerHTML += `<span class="log-score">⚖️ Node ${node.name.toUpperCase()}: Total Score = <b>${score}</b> [Breakdown: ${nodeRes.breakdown.join(', ') || 'none'}]</span>\n`;
-        logBox.scrollTop = logBox.scrollHeight;
       }
       
-      await sleep(350);
+      await sleep(250);
       
-      // Winner phase
-      const winnerNode = nodes.find(n => n.id === evalData.winnerId);
-      const winCard = document.getElementById(`node-${winnerNode.id}`);
-      winCard.classList.add('winner-node');
-      
-      logBox.innerHTML += `\n<span class="log-success">🎉 [RESULT] Pod scheduled on winner node: <b>${winnerNode.name.toUpperCase()}</b>!</span>\n`;
+      // Highlight winner node card
+      if (actualWinnerId) {
+        const winnerNode = nodes.find(n => n.id === actualWinnerId);
+        const winCard = document.getElementById(`node-${winnerNode.id}`);
+        winCard.classList.add('winner-node');
+        
+        logBox.innerHTML += `\n<span class="log-success">🎉 [RESULT] Pod scheduled on winner node: <b>${winnerNode.name.toUpperCase()}</b>!</span>\n`;
+      } else {
+        logBox.innerHTML += `\n<span class="log-error">⚠️ [RESULT] Placement failed. Pod marked PENDING.</span>\n`;
+      }
       logBox.scrollTop = logBox.scrollHeight;
       
-      executeActualDeploy(evalData.winnerId);
-    }
-
-    // Handles flight animation and commits pod resources
-    function executeActualDeploy(winnerId) {
-      isScheduling = true;
-      toggleInteractiveElements(true);
-      
-      const podName = document.getElementById('pod-name').value;
-      const podCpu = parseFloat(document.getElementById('pod-cpu-req').value);
-      const podRam = parseFloat(document.getElementById('pod-ram-req').value);
-      const isAutoMode = document.getElementById('auto-schedule-opt').checked;
-      
-      const logBox = document.getElementById('log-box');
-      if (isAutoMode) {
-        logBox.innerHTML += `<span class="log-info">[DEPLOY] Deploying pod ${podName}...</span>\n`;
-      }
-      
-      const flightDuration = isAutoMode ? 350 : 700;
-      
+      // Fly token
       const sourcePod = document.getElementById('source-pod-visual');
-      const destSlot = winnerId 
-        ? document.getElementById(`node-${winnerId}-landing-slot`)
+      const destSlot = actualWinnerId 
+        ? document.getElementById(`node-${actualWinnerId}-landing-slot`)
         : document.getElementById('pending-slot');
         
-      if (!sourcePod || !destSlot) return;
-
-      const sourceRect = sourcePod.getBoundingClientRect();
-      const destRect = destSlot.getBoundingClientRect();
-      
-      // Create animated copy
-      const flyer = document.createElement('div');
-      flyer.className = 'flying-pod-token';
-      flyer.innerText = `📦 ${podName}`;
-      
-      flyer.style.width = sourceRect.width + 'px';
-      flyer.style.height = sourceRect.height + 'px';
-      flyer.style.left = (sourceRect.left + window.scrollX) + 'px';
-      flyer.style.top = (sourceRect.top + window.scrollY) + 'px';
-      
-      document.body.appendChild(flyer);
-      
-      synth.swoosh();
-      
-      // Force reflow
-      flyer.offsetWidth;
-      
-      // Apply transitions
-      flyer.style.transition = `all ${flightDuration}ms cubic-bezier(0.25, 1, 0.5, 1.25)`;
-      flyer.style.left = (destRect.left + window.scrollX + (destRect.width - sourceRect.width) / 2) + 'px';
-      flyer.style.top = (destRect.top + window.scrollY + (destRect.height - sourceRect.height) / 2) + 'px';
-      flyer.style.transform = 'scale(0.85)';
-      flyer.style.opacity = '0.9';
-      
-      destSlot.classList.add('targeting');
-      
-      setTimeout(() => {
+      if (sourcePod && destSlot) {
+        const sourceRect = sourcePod.getBoundingClientRect();
+        const destRect = destSlot.getBoundingClientRect();
+        
+        const flyer = document.createElement('div');
+        flyer.className = 'flying-pod-token';
+        flyer.innerText = `📦 ${podName}`;
+        
+        flyer.style.width = sourceRect.width + 'px';
+        flyer.style.height = sourceRect.height + 'px';
+        flyer.style.left = (sourceRect.left + window.scrollX) + 'px';
+        flyer.style.top = (sourceRect.top + window.scrollY) + 'px';
+        
+        document.body.appendChild(flyer);
+        synth.swoosh();
+        flyer.offsetWidth;
+        
+        flyer.style.transition = `all ${flightDuration}ms cubic-bezier(0.25, 1, 0.5, 1.25)`;
+        flyer.style.left = (destRect.left + window.scrollX + (destRect.width - sourceRect.width) / 2) + 'px';
+        flyer.style.top = (destRect.top + window.scrollY + (destRect.height - sourceRect.height) / 2) + 'px';
+        flyer.style.transform = 'scale(0.85)';
+        flyer.style.opacity = '0.9';
+        
+        destSlot.classList.add('targeting');
+        await sleep(flightDuration);
         destSlot.classList.remove('targeting');
-        if (flyer.parentNode) {
-          flyer.remove();
+        if (flyer.parentNode) flyer.remove();
+      }
+
+      // Land the pod
+      document.getElementById('pod-deck-container').classList.remove('evaluating');
+      logBox.innerHTML = evalData.logs;
+      
+      if (actualWinnerId) {
+        const node = nodes.find(n => n.id === actualWinnerId);
+        node.scheduledPods.push({ name: podName, cpu: podCpu, ram: podRam });
+        updateNodeUI(actualWinnerId);
+        
+        const winCard = document.getElementById(`node-${actualWinnerId}`);
+        winCard.classList.remove('winner-node');
+        winCard.classList.add('scheduled-success');
+        setTimeout(() => winCard.classList.remove('scheduled-success'), 800);
+        
+        document.getElementById('stat-status').innerText = "SUCCESS";
+        document.getElementById('stat-status').style.color = "var(--lime)";
+      } else {
+        const landed = document.createElement('div');
+        landed.className = 'scheduled-pod-token pending';
+        landed.innerText = `⚠️ ${podName}`;
+        destSlot.appendChild(landed);
+        
+        document.getElementById('stat-status').innerText = "PENDING";
+        document.getElementById('stat-status').style.color = "var(--pink)";
+      }
+
+      // Check guess correctness outcome
+      if (appMode === 'quiz' && userGuessNodeId !== null) {
+        const expectedWinner = actualWinnerId || 'pending';
+        const correct = (userGuessNodeId === expectedWinner);
+        
+        let guessStr = (userGuessNodeId === 'pending') ? "PENDING (None fits)" : `NODE-${userGuessNodeId}`;
+        let expectedStr = (expectedWinner === 'pending') ? "PENDING (None fits)" : `NODE-${expectedWinner}`;
+        
+        if (correct) {
+          quizScore++;
+          logBox.innerHTML += `\n<span class="log-success" style="font-size:13.5px; font-weight:800;">✅ CORRECT ANSWER! You guessed ${guessStr} and kube-scheduler agreed! (+1 pt)</span>\n`;
+          synth.success();
+        } else {
+          logBox.innerHTML += `\n<span class="log-error" style="font-size:13.5px; font-weight:800;">❌ INCORRECT! You guessed ${guessStr}, but kube-scheduler selected ${expectedStr}.</span>\n`;
+          synth.fail();
+        }
+        quizAttempt++;
+        updateStatsUI();
+        
+        logBox.scrollTop = logBox.scrollHeight;
+        
+        // Set transition buttons
+        currentQuizPhase = 'next';
+        const deployBtn = document.getElementById('run-scheduler-btn');
+        if (quizAttempt >= 10) {
+          deployBtn.innerText = "🏆 VIEW CERTIFICATE";
+        } else {
+          deployBtn.innerText = "➡️ NEXT QUESTION";
         }
         
-        document.getElementById('pod-deck-container').classList.remove('evaluating');
-        
-        if (winnerId) {
-          // Commit pod resources
-          const node = nodes.find(n => n.id === winnerId);
-          node.scheduledPods.push({ name: podName, cpu: podCpu, ram: podRam });
-          
-          logBox.innerHTML += `<span class="log-success">✔️ [DEPLOY] Pod ${podName} successfully running on node ${node.name.toUpperCase()}!</span>\n`;
+        isScheduling = false;
+        updateNodeSpecsLockState();
+        toggleInteractiveElements(true);
+        deployBtn.disabled = false; // keep deploy button active
+      } else {
+        // Sandbox mode ending:
+        if (actualWinnerId) {
           synth.success();
-          
-          // Flash target card
-          const targetCard = document.getElementById(`node-${winnerId}`);
-          targetCard.classList.remove('winner-node');
-          targetCard.classList.add('scheduled-success');
-          setTimeout(() => targetCard.classList.remove('scheduled-success'), 800);
-          
-          document.getElementById('stat-status').innerText = "SUCCESS";
-          document.getElementById('stat-status').style.color = "var(--lime)";
         } else {
-          // Pending placement
-          logBox.innerHTML += `<span class="log-warn">⚠️ [DEPLOY] Pod is placed in PENDING queue.</span>\n`;
           synth.fail();
-          
-          const landed = document.createElement('div');
-          landed.className = 'scheduled-pod-token pending';
-          landed.innerText = `⚠️ ${podName}`;
-          destSlot.appendChild(landed);
-          
-          document.getElementById('stat-status').innerText = "PENDING";
-          document.getElementById('stat-status').style.color = "var(--pink)";
         }
         
         logBox.scrollTop = logBox.scrollHeight;
         
-        // Increment pod counter
-        scheduledPodsCounter++;
-        
-        // Re-enable UI
         isScheduling = false;
-        toggleInteractiveElements(false);
+        updateNodeSpecsLockState();
+        toggleInteractiveElements(false); // Enable controls immediately
         
-        // Sync everything and trigger next preview
+        const deployBtn = document.getElementById('run-scheduler-btn');
+        deployBtn.innerText = "🚀 DEPLOY POD";
+        deployBtn.disabled = false;
+        
         handleParamChange();
-      }, flightDuration + 50);
+      }
     }
 
     function toggleInteractiveElements(disabled) {
@@ -2513,17 +2834,172 @@
       document.querySelectorAll('.selector-btn').forEach(b => b.disabled = disabled);
     }
 
+    // GAME MODES MANAGEMENT
+    function setMode(mode) {
+      if (isScheduling) return;
+      appMode = mode;
+      synth.click();
+      
+      const sandboxBtn = document.querySelectorAll('#mode-selector .selector-btn')[0];
+      const quizBtn = document.querySelectorAll('#mode-selector .selector-btn')[1];
+      const settingsContainer = document.getElementById('quiz-lock-settings');
+      const deployBtn = document.getElementById('run-scheduler-btn');
+      
+      // Clean previous guess tags
+      userGuessNodeId = null;
+      document.querySelectorAll('.guess-badge').forEach(b => b.remove());
+      document.querySelectorAll('.node-card').forEach(c => c.classList.remove('selected'));
+      const pendingSlot = document.getElementById('pending-slot');
+      if (pendingSlot) pendingSlot.classList.remove('selected');
+      
+      if (mode === 'sandbox') {
+        sandboxBtn.classList.add('active');
+        quizBtn.classList.remove('active');
+        settingsContainer.classList.remove('locked');
+        document.getElementById('lock-banner').style.display = 'none';
+        
+        quizAttempt = 0;
+        quizScore = 0;
+        currentQuizPhase = 'guess';
+        
+        deployBtn.innerText = "🚀 DEPLOY POD";
+        
+        resetNodesArray();
+        initClusterUI();
+        updateNodeSpecsLockState();
+        
+        const logBox = document.getElementById('log-box');
+        logBox.innerHTML = `<span class="log-success">🛠&nbsp; [SANDBOX] Sandbox mode active. Modify pod template specs and click deploy! Select a node to submit guesses.</span>\n`;
+        
+        handleParamChange();
+      } else {
+        sandboxBtn.classList.remove('active');
+        quizBtn.classList.add('active');
+        settingsContainer.classList.add('locked');
+        document.getElementById('lock-banner').style.display = 'block';
+        
+        quizAttempt = 0;
+        quizScore = 0;
+        currentQuizPhase = 'guess';
+        
+        deployBtn.innerText = "🚀 SUBMIT GUESS";
+        document.getElementById('pending-slot').innerHTML = '';
+        
+        generateRandomQuizQuestion();
+        updateNodeSpecsLockState();
+      }
+      
+      updateStatsUI();
+    }
+
+    function generateRandomQuizQuestion() {
+      // Randomize Node attributes
+      nodes.forEach(node => {
+        node.loadPercent = (Math.floor(Math.random() * 8) + 1) * 10;
+        node.disk = Math.random() > 0.5 ? 'ssd' : 'hdd';
+        node.taint = Math.random() > 0.85 ? 'gpu' : 'none';
+        node.pods = [];
+        if (Math.random() > 0.6) node.pods.push('db');
+        if (Math.random() > 0.6) node.pods.push('web');
+        node.scheduledPods = [];
+      });
+      
+      initClusterUI();
+      
+      // Randomize pod requests
+      const cpus = [0.5, 1, 2, 4, 8];
+      const rams = [1, 2, 4, 8, 16];
+      const zones = ['any', 'zone-a', 'zone-b', 'zone-c'];
+      const disks = ['any', 'ssd', 'hdd'];
+      
+      const randomCpu = cpus[Math.floor(Math.random() * cpus.length)];
+      const randomRam = rams[Math.floor(Math.random() * rams.length)];
+      const randomZone = zones[Math.floor(Math.random() * zones.length)];
+      const randomDisk = disks[Math.floor(Math.random() * disks.length)];
+      const tolerateGpu = Math.random() > 0.7;
+      const avoidDb = Math.random() > 0.7;
+      
+      document.getElementById('pod-cpu-req').value = randomCpu;
+      document.getElementById('pod-ram-req').value = randomRam;
+      
+      setZoneAffinity(randomZone);
+      setDiskPreference(randomDisk);
+      document.getElementById('pod-tolerate-gpu').checked = tolerateGpu;
+      document.getElementById('pod-anti-db').checked = avoidDb;
+      
+      handleParamChange();
+    }
+
+    function updateStatsUI() {
+      document.getElementById('quiz-attempt-val').innerText = `${quizAttempt} / 10`;
+      document.getElementById('quiz-score-val').innerText = `${quizScore} / ${quizAttempt}`;
+      const pct = quizAttempt > 0 ? Math.round((quizScore / quizAttempt) * 100) : 0;
+      document.getElementById('quiz-acc-val').innerText = `${pct}%`;
+    }
+
+    // Modal popup certificates rank
+    function showQuizModal() {
+      let rank = "";
+      let desc = "";
+      
+      if (quizScore >= 9) {
+        rank = "👑 K8S CLUSTER ARCHITECT";
+        desc = "Incredible! You have demonstrated absolute mastery of Kubernetes scheduler predicates, taints, affinity configurations, and resource balance scoring algorithms. You are a true scheduling master!";
+      } else if (quizScore >= 7) {
+        rank = "🎖️ SENIOR DEVOPS ENGINEER";
+        desc = "Excellent work! You have a very strong understanding of how Kubernetes filters and scores candidates. You easily manage complex pod placements and affinity constraints.";
+      } else if (quizScore >= 5) {
+        rank = "🛠️ K8S ADMINISTRATOR";
+        desc = "Solid job! You understand the core scheduler rules, resource constraints, and taints. A bit more practice with balanced resource calculations and you'll be an expert!";
+      } else if (quizScore >= 3) {
+        rank = "👶 JUNIOR SYSADMIN";
+        desc = "Good attempt, but there is room to grow. Make sure to watch the CPU/RAM resource bars and check for taints or anti-affinities that block nodes during the filtering phase.";
+      } else {
+        rank = "🐌 YAML COPY-PASTER";
+        desc = "Keep learning! The scheduler can be tricky. Try playing in Sandbox Mode, adjusting sliders, and reading the detailed kube-scheduler logs to understand why pods land where they do.";
+      }
+      
+      document.getElementById('quiz-modal-rank').innerText = rank;
+      document.getElementById('quiz-modal-score').innerText = `${quizScore} / 10`;
+      document.getElementById('quiz-modal-desc').innerText = desc;
+      
+      document.getElementById('quiz-modal').classList.add('active');
+      synth.success();
+    }
+
+    function closeQuizModal() {
+      document.getElementById('quiz-modal').classList.remove('active');
+      setMode('quiz');
+    }
+
     // Reset cluster to default settings
     function resetCluster() {
       if (isScheduling) return;
       synth.reset();
       
+      // Reset guess state
+      userGuessNodeId = null;
+      document.querySelectorAll('.guess-badge').forEach(b => b.remove());
+      document.querySelectorAll('.node-card').forEach(c => c.classList.remove('selected'));
+      const pendingSlot = document.getElementById('pending-slot');
+      if (pendingSlot) pendingSlot.classList.remove('selected');
+      
+      toggleInteractiveElements(false);
+      
+      if (appMode === 'quiz') {
+        quizAttempt = 0;
+        quizScore = 0;
+        currentQuizPhase = 'guess';
+        document.getElementById('run-scheduler-btn').innerText = "🚀 SUBMIT GUESS";
+        generateRandomQuizQuestion();
+        updateStatsUI();
+        return;
+      }
+      
       resetNodesArray();
       scheduledPodsCounter = 0;
       
-      // Clear pending slot
       document.getElementById('pending-slot').innerHTML = '';
-      
       initClusterUI();
       
       const logBox = document.getElementById('log-box');
@@ -2535,11 +3011,15 @@
       
       handleParamChange();
       
-      // Show toaster notification
       const toast = document.getElementById('toast-notify');
       toast.innerText = "CLUSTER RESET SUCCESSFUL 🧹";
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // Helper sleep timer
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     // TABS MANAGEMENT
@@ -2560,6 +3040,7 @@
       synth.click();
     }
 
+    // YAML tabs cycle
     function switchYamlSubtab(subtabId) {
       currentYamlSubtab = subtabId;
       document.getElementById('subtab-btn-pod').classList.remove('active');
