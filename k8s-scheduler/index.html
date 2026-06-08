@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>K8s Advanced Scheduler Telemetry Simulator</title>
-  <meta name="description" content="An interactive, gamified simulation of the Kubernetes scheduling engine. Customize node capacities, resource requests, taints, and affinity rules to see real-time placement decisions.">
+  <meta name="description" content="An interactive, gamified simulator of the Kubernetes scheduling engine. Deploy multiple pods, adjust node capacities, configure affinity rules, and see placement decisions in real-time.">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +15,7 @@
     /* Design Tokens / Variables */
     :root {
       --bg-color: #060913;
-      --panel-bg: rgba(13, 20, 38, 0.7);
+      --panel-bg: rgba(13, 20, 38, 0.75);
       --card-bg: rgba(20, 30, 55, 0.6);
       --border-color: rgba(0, 242, 254, 0.15);
       --border-glow: rgba(0, 242, 254, 0.08);
@@ -219,7 +219,14 @@
       gap: 8px;
     }
 
-    /* Cyber Button */
+    /* Cyber Buttons Group & Actions */
+    .action-buttons-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
     .cyber-btn {
       background: linear-gradient(135deg, rgba(0, 242, 254, 0.15) 0%, rgba(79, 172, 254, 0.05) 100%);
       border: 1px solid var(--cyan);
@@ -227,7 +234,7 @@
       padding: 12px 20px;
       border-radius: 8px;
       font-family: 'Orbitron', sans-serif;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 800;
       cursor: pointer;
       width: 100%;
@@ -255,6 +262,7 @@
       cursor: not-allowed;
       background: transparent;
       box-shadow: none;
+      opacity: 0.5;
     }
 
     .cyber-btn.run-btn {
@@ -269,7 +277,19 @@
       box-shadow: 0 0 20px var(--lime-glow);
     }
 
-    /* Utility UI components */
+    .cyber-btn.reset-btn {
+      border-color: var(--amber);
+      color: var(--amber);
+      box-shadow: 0 0 10px rgba(255, 179, 0, 0.1);
+    }
+
+    .cyber-btn.reset-btn:hover:not(:disabled) {
+      background: var(--amber);
+      color: #000;
+      box-shadow: 0 0 20px var(--amber-glow);
+    }
+
+    /* Utility UI settings sections */
     .settings-group {
       background: rgba(6, 9, 19, 0.4);
       border: 1px solid rgba(255, 255, 255, 0.04);
@@ -380,35 +400,47 @@
       border-color: var(--cyan);
     }
 
-    .select-container {
+    /* Button Selectors Groups */
+    .button-selector-group {
+      display: flex;
+      gap: 5px;
       margin-bottom: 15px;
-    }
-
-    .select-label {
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 6px;
-      display: block;
-    }
-
-    .cyber-select {
       width: 100%;
-      background: rgba(6, 9, 19, 0.8);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 8px 12px;
-      border-radius: 6px;
-      outline: none;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 13px;
-      transition: border-color var(--transition-speed);
     }
 
-    .cyber-select:focus {
-      border-color: var(--cyan);
-      box-shadow: 0 0 8px var(--cyan-glow);
+    .selector-btn {
+      flex: 1;
+      background: rgba(6, 9, 19, 0.7);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 8px 4px;
+      border-radius: 6px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      text-align: center;
+      white-space: nowrap;
+      box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
     }
+
+    .selector-btn:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .selector-btn.active {
+      background: rgba(0, 242, 254, 0.15);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 12px var(--cyan-glow), inset 0 0 5px rgba(0, 242, 254, 0.1);
+      text-shadow: 0 0 5px var(--cyan-glow);
+    }
+
+    .selector-btn.active.zone-a { border-color: var(--pink); color: var(--pink); box-shadow: 0 0 12px var(--pink-glow); text-shadow: 0 0 5px var(--pink-glow); }
+    .selector-btn.active.zone-b { border-color: var(--lime); color: var(--lime); box-shadow: 0 0 12px var(--lime-glow); text-shadow: 0 0 5px var(--lime-glow); }
+    .selector-btn.active.zone-c { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 12px var(--cyan-glow); text-shadow: 0 0 5px var(--cyan-glow); }
 
     /* Sound and Auto Control Deck */
     .control-deck {
@@ -456,7 +488,7 @@
       height: 42px;
     }
 
-    /* The Pod Deck (Visual waiting state) */
+    /* The Pod Deck */
     .pod-deck-box {
       border: 1.5px dashed var(--cyan);
       background: rgba(0, 242, 254, 0.03);
@@ -523,7 +555,7 @@
 
     .pod-card-header .pod-name {
       font-family: 'Orbitron', sans-serif;
-      font-size: 13px;
+      font-size: 11px;
       color: var(--cyan);
       text-shadow: 0 0 5px var(--cyan-glow);
     }
@@ -541,7 +573,7 @@
     .pod-resources-small {
       display: flex;
       gap: 15px;
-      font-size: 12px;
+      font-size: 11px;
       font-family: 'Orbitron', sans-serif;
       color: var(--text-muted);
     }
@@ -592,7 +624,7 @@
     }
 
     .pending-slot {
-      width: 140px;
+      width: 160px;
       height: 38px;
       border: 1px dashed var(--pink);
       border-radius: 6px;
@@ -602,6 +634,8 @@
       justify-content: center;
       transition: all 0.3s ease;
       position: relative;
+      padding: 4px;
+      overflow: hidden;
     }
 
     .pending-slot.targeting {
@@ -613,7 +647,7 @@
     /* The Nodes Grid Layout */
     .cluster-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(295px, 1fr));
       gap: 20px;
     }
 
@@ -643,6 +677,17 @@
       box-shadow: 0 0 15px rgba(0, 242, 254, 0.2), inset 0 0 10px rgba(0, 242, 254, 0.05);
     }
 
+    .node-card.evaluating-target {
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px var(--cyan-glow);
+      animation: targetPulse 1.5s infinite alternate;
+    }
+
+    @keyframes targetPulse {
+      0% { box-shadow: 0 0 10px var(--cyan-glow); border-color: rgba(0, 242, 254, 0.4); }
+      100% { box-shadow: 0 0 20px rgba(0, 242, 254, 0.8); border-color: var(--cyan); }
+    }
+
     .node-card.scanning {
       border-color: var(--amber);
       box-shadow: 0 0 20px var(--amber-glow);
@@ -655,8 +700,8 @@
     }
 
     .node-card.filter-passed {
-      border-color: var(--lime);
-      box-shadow: 0 0 20px rgba(57, 255, 20, 0.15);
+      border-color: rgba(57, 255, 20, 0.4);
+      box-shadow: 0 0 10px rgba(57, 255, 20, 0.1);
     }
 
     .node-card.filter-failed {
@@ -751,7 +796,7 @@
       box-shadow: 0 0 8px var(--lime-glow);
     }
 
-    /* Interactive Metadata Buttons in Cards */
+    /* Interactive Metadata Badges */
     .node-meta-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -795,13 +840,11 @@
       border-color: rgba(255, 255, 255, 0.2);
     }
 
-    /* Meta specific badges */
-    .meta-btn.zone-btn.zone-a { border-color: var(--cyan); color: var(--cyan); }
-    .meta-btn.zone-btn.zone-b { border-color: var(--purple); color: var(--purple); }
-    .meta-btn.zone-btn.zone-c { border-color: var(--amber); color: var(--amber); }
+    .meta-btn.zone-btn.zone-a { border-color: var(--pink); color: var(--pink); }
+    .meta-btn.zone-btn.zone-b { border-color: var(--lime); color: var(--lime); }
+    .meta-btn.zone-btn.zone-c { border-color: var(--cyan); color: var(--cyan); }
 
     .meta-btn.disk-btn.ssd { border-color: var(--lime); color: var(--lime); }
-    .meta-btn.disk-btn.nvme { border-color: var(--cyan); color: var(--cyan); }
     .meta-btn.disk-btn.hdd { border-color: #a0aec0; color: #a0aec0; }
 
     .meta-btn.taint-btn.active {
@@ -891,6 +934,11 @@
       border-radius: 4px 0 0 4px;
     }
 
+    .meter-bar-fill.scheduled {
+      background: linear-gradient(90deg, #a55eea, #8854d0); /* Purple scheduled load */
+      box-shadow: 0 0 5px rgba(136, 84, 208, 0.3);
+    }
+
     .meter-bar-fill.request {
       background: linear-gradient(90deg, var(--cyan), #00c6ff);
       box-shadow: 0 0 8px var(--cyan);
@@ -901,16 +949,6 @@
       background: linear-gradient(90deg, var(--pink), #ff4b2b);
       box-shadow: 0 0 8px var(--pink-glow);
       animation: flashOverflow 0.6s infinite alternate;
-    }
-
-    @keyframes pulseRequest {
-      0% { opacity: 0.6; }
-      100% { opacity: 1; }
-    }
-    
-    @keyframes flashOverflow {
-      0% { opacity: 0.4; }
-      100% { opacity: 1; }
     }
 
     /* Custom Node Sliders */
@@ -986,13 +1024,17 @@
     }
 
     .landing-slot {
-      height: 38px;
+      min-height: 38px;
+      height: auto;
       border: 1px dashed rgba(0, 242, 254, 0.15);
       border-radius: 6px;
       background: rgba(0, 0, 0, 0.2);
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: center;
+      gap: 5px;
+      padding: 6px;
       transition: all 0.3s ease;
       position: relative;
     }
@@ -1004,18 +1046,21 @@
       border-style: solid;
     }
 
-    /* The scheduled Pod tokens */
+    /* Scheduled Pod tokens */
     .scheduled-pod-token {
-      width: 90%;
-      padding: 6px;
-      border-radius: 5px;
+      width: 100%;
+      padding: 4px 6px;
+      border-radius: 4px;
       font-family: 'Orbitron', sans-serif;
       font-weight: 800;
-      font-size: 10px;
+      font-size: 9px;
       text-align: center;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .scheduled-pod-token.success {
@@ -1026,11 +1071,12 @@
     }
 
     .scheduled-pod-token.pending {
-      background: rgba(255, 0, 127, 0.1);
+      background: rgba(255, 0, 127, 0.15);
       border: 1px solid var(--pink);
       color: var(--pink);
-      box-shadow: 0 0 10px rgba(255, 0, 127, 0.15);
+      box-shadow: 0 0 10px rgba(255, 0, 127, 0.2);
       animation: pulseError 1.5s infinite;
+      width: 90%;
     }
 
     @keyframes popIn {
@@ -1051,7 +1097,7 @@
       color: #000;
       font-family: 'Orbitron', sans-serif;
       font-weight: 800;
-      font-size: 11px;
+      font-size: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1239,22 +1285,22 @@
     <div class="logo-area">
       <div class="k8s-logo">☸️</div>
       <div class="logo-text">
-        <h1 id="main-heading">K8S ADVANCED SCHEDULER</h1>
+        <h1 id="main-heading">☸️ K8S ADVANCED SCHEDULER</h1>
         <p class="subtitle">AUTOMATED PLACEMENT TELEMETRY & SIMULATOR</p>
       </div>
     </div>
     <div class="header-stats">
       <div class="stat-box">
         <div class="stat-val" id="stat-nodes">4 / 4</div>
-        <div class="stat-lbl">NODES READY</div>
+        <div class="stat-lbl">NODES READY 🖥️</div>
       </div>
       <div class="stat-box">
         <div class="stat-val" id="stat-scheduled">0</div>
-        <div class="stat-lbl">PODS RUNNING</div>
+        <div class="stat-lbl">PODS RUNNING 📦</div>
       </div>
       <div class="stat-box">
         <div class="stat-val" id="stat-status">IDLE</div>
-        <div class="stat-lbl">ENGINE STATE</div>
+        <div class="stat-lbl">ENGINE STATE ⚙️</div>
       </div>
     </div>
   </header>
@@ -1276,19 +1322,19 @@
           <label class="checkbox-container" style="margin-bottom: 0;">
             <input type="checkbox" id="auto-schedule-opt" checked onchange="handleAutoScheduleToggle()">
             <div class="custom-check"></div>
-            <span>Auto-Schedule</span>
+            <span>Auto-Schedule Preview</span>
           </label>
         </div>
       </div>
       
       <!-- Pod Profile Inputs -->
       <div class="settings-group">
-        <h3>📦 Pod Identity</h3>
+        <h3>🆔 Pod Template Identity</h3>
         <div class="slider-container" style="margin-bottom: 0;">
           <div class="slider-label-row">
-            <span>Pod Name</span>
+            <span>Dynamic Name</span>
           </div>
-          <input type="text" id="pod-name" value="my-smart-pod" style="width:100%; background:rgba(6,9,19,0.8); border:1px solid var(--border-color); color:var(--text-main); padding:8px 12px; border-radius:6px; outline:none; font-family:monospace; font-size:13px;" oninput="handleParamChange()">
+          <input type="text" id="pod-name" readonly style="width:100%; background:rgba(6,9,19,0.8); border:1px solid var(--border-color); color:var(--cyan); padding:8px 12px; border-radius:6px; outline:none; font-family:monospace; font-size:12px; font-weight:bold; box-shadow: inset 0 0 5px rgba(0,0,0,0.5);" title="Auto-generated name based on pod properties">
         </div>
       </div>
 
@@ -1297,7 +1343,7 @@
         
         <div class="slider-container">
           <div class="slider-label-row">
-            <span>CPU Request</span>
+            <span>CPU Request ⚙️</span>
             <span id="pod-cpu-val">2.0 Cores</span>
           </div>
           <input type="range" class="cyber-slider" id="pod-cpu-req" min="0.5" max="8" step="0.5" value="2" oninput="handleParamChange()">
@@ -1305,7 +1351,7 @@
 
         <div class="slider-container" style="margin-bottom: 0;">
           <div class="slider-label-row">
-            <span>Memory Request</span>
+            <span>Memory Request 💾</span>
             <span id="pod-ram-val">4.0 GB</span>
           </div>
           <input type="range" class="cyber-slider" id="pod-ram-req" min="0.5" max="16" step="0.5" value="4" oninput="handleParamChange()">
@@ -1315,14 +1361,15 @@
       <div class="settings-group">
         <h3>🛑 Filtering (Predicates)</h3>
         
-        <div class="select-container">
-          <label class="select-label" for="pod-node-affinity">Node Affinity (Zone Requirement)</label>
-          <select class="cyber-select" id="pod-node-affinity" onchange="handleParamChange()">
-            <option value="any">No Hard Zone Affinity (Any Zone)</option>
-            <option value="zone-a">Required Zone: zone-a</option>
-            <option value="zone-b">Required Zone: zone-b</option>
-            <option value="zone-c">Required Zone: zone-c</option>
-          </select>
+        <div style="margin-bottom: 15px;">
+          <label class="select-label">Node Affinity (Required Zone) 🌍</label>
+          <div class="button-selector-group" id="zone-selector">
+            <button class="selector-btn active" data-val="any" onclick="setZoneAffinity('any')">Any Zone 🌍</button>
+            <button class="selector-btn zone-a" data-val="zone-a" onclick="setZoneAffinity('zone-a')">Zone-A 🔴</button>
+            <button class="selector-btn zone-b" data-val="zone-b" onclick="setZoneAffinity('zone-b')">Zone-B 🟢</button>
+            <button class="selector-btn zone-c" data-val="zone-c" onclick="setZoneAffinity('zone-c')">Zone-C 🔵</button>
+          </div>
+          <input type="hidden" id="pod-node-affinity" value="any">
         </div>
 
         <label class="checkbox-container">
@@ -1341,17 +1388,15 @@
       <div class="settings-group">
         <h3>☁️ Scoring (Priorities)</h3>
         
-        <label class="checkbox-container">
-          <input type="checkbox" id="pod-pref-ssd" checked onchange="handleParamChange()">
-          <div class="custom-check"></div>
-          <span>Prefer SSD Nodes (+50 pts) ⚡</span>
-        </label>
-
-        <label class="checkbox-container">
-          <input type="checkbox" id="pod-pref-nvme" checked onchange="handleParamChange()">
-          <div class="custom-check"></div>
-          <span>Prefer NVMe Nodes (+70 pts) 🚀</span>
-        </label>
+        <div style="margin-bottom: 15px;">
+          <label class="select-label">Preferred Disk Type ⚡</label>
+          <div class="button-selector-group" id="disk-pref-selector">
+            <button class="selector-btn active" data-val="any" onclick="setDiskPreference('any')">Any Disk 🌍</button>
+            <button class="selector-btn" data-val="ssd" onclick="setDiskPreference('ssd')">SSD ⚡</button>
+            <button class="selector-btn" data-val="hdd" onclick="setDiskPreference('hdd')">HDD 💾</button>
+          </div>
+          <input type="hidden" id="pod-preferred-disk" value="any">
+        </div>
 
         <label class="checkbox-container">
           <input type="checkbox" id="pod-pref-web" onchange="handleParamChange()">
@@ -1366,15 +1411,18 @@
         </label>
       </div>
 
-      <!-- Trigger action block -->
-      <button class="cyber-btn run-btn" id="run-scheduler-btn" onclick="triggerManualSchedule()" style="margin-top: 5px;">🚀 RUN SCHEDULER</button>
+      <!-- Trigger actions group -->
+      <div class="action-buttons-group">
+        <button class="cyber-btn run-btn" id="run-scheduler-btn" onclick="triggerDeployment()">🚀 DEPLOY POD</button>
+        <button class="cyber-btn reset-btn" id="reset-cluster-btn" onclick="resetCluster()">🧹 RESET CLUSTER</button>
+      </div>
       
       <!-- Visual Pod Waiting Deck -->
       <div class="pod-deck-box" id="pod-deck-container">
         <div class="source-pod-visual" id="source-pod-visual" onclick="showPodYamlFromDeck()">
           <div class="pod-card-header">
             <span class="pod-name" id="deck-pod-name">my-smart-pod</span>
-            <span class="pod-kind">Pod</span>
+            <span class="pod-kind">Pod Spec</span>
           </div>
           <div class="pod-resources-small">
             <span>CPU: <strong id="deck-pod-cpu">2.0</strong></span>
@@ -1392,7 +1440,7 @@
         <div class="section-header">
           <h2>🖥️ ACTIVE CLUSTER TOPOLOGY</h2>
           <div class="pending-queue-wrapper">
-            <span>PENDING ZONE:</span>
+            <span>PENDING ZONE ⚠️:</span>
             <div id="pending-slot" class="pending-slot" title="If pod cannot be scheduled, it goes here."></div>
           </div>
         </div>
@@ -1465,7 +1513,7 @@
           osc.start(this.ctx.currentTime + delay);
           osc.stop(this.ctx.currentTime + delay + duration);
         } catch (e) {
-          console.warn("Audio Context blocked or unsupported:", e);
+          console.warn("Audio Context blocked:", e);
         }
       },
       click() {
@@ -1475,14 +1523,18 @@
         this.playTone(1000, 'sine', 0.02, 0.05);
       },
       success() {
-        this.playTone(392, 'triangle', 0.08, 0.12, 0);      // G4
-        this.playTone(523.25, 'triangle', 0.08, 0.12, 0.06);  // C5
-        this.playTone(659.25, 'triangle', 0.08, 0.12, 0.12);  // E5
-        this.playTone(783.99, 'sine', 0.25, 0.15, 0.18);      // G5
+        this.playTone(392, 'triangle', 0.08, 0.1, 0);       // G4
+        this.playTone(523.25, 'triangle', 0.08, 0.1, 0.06);  // C5
+        this.playTone(659.25, 'triangle', 0.08, 0.1, 0.12);  // E5
+        this.playTone(783.99, 'sine', 0.25, 0.12, 0.18);      // G5
       },
       fail() {
         this.playTone(160, 'sawtooth', 0.15, 0.15, 0);
         this.playTone(110, 'sawtooth', 0.35, 0.2, 0.08);
+      },
+      reset() {
+        this.playTone(400, 'sine', 0.08, 0.1, 0);
+        this.playTone(300, 'sine', 0.15, 0.1, 0.05);
       },
       swoosh() {
         if (!this.enabled) return;
@@ -1518,8 +1570,8 @@
       }
     }
 
-    // Dynamic state management
-    const nodes = [
+    // Default Node configurations (NVMe disk removed)
+    const initialNodes = [
       {
         id: 1,
         name: "node-1",
@@ -1557,7 +1609,7 @@
         id: 4,
         name: "node-4",
         zone: "zone-b",
-        disk: "nvme",
+        disk: "ssd", // changed from nvme to ssd
         taint: "none",
         pods: ["db", "web"],
         cpuCap: 16.0,
@@ -1566,17 +1618,29 @@
       }
     ];
 
+    // Live nodes state array
+    let nodes = [];
     let selectedNodeId = 1;
     let isScheduling = false;
-    let autoScheduleDebounceTimer = null;
+    let scheduledPodsCounter = 0;
+    let previewWinnerNodeId = null;
     let currentYamlSubtab = 'pod';
     let currentTab = 'logs';
 
     // UI Initialisation
     window.addEventListener('DOMContentLoaded', () => {
+      resetNodesArray();
       initClusterUI();
-      handleParamChange(); // run initial scheduler evaluation
+      handleParamChange();
     });
+
+    function resetNodesArray() {
+      nodes = initialNodes.map(n => ({
+        ...n,
+        pods: [...n.pods],
+        scheduledPods: []
+      }));
+    }
 
     function initClusterUI() {
       const grid = document.getElementById('cluster-grid-view');
@@ -1584,14 +1648,11 @@
       nodes.forEach(n => {
         grid.insertAdjacentHTML('beforeend', renderNodeHTML(n));
       });
-      // Set initial selected visual class
       document.getElementById(`node-${selectedNodeId}`).classList.add('selected');
+      updateAllNodesUI();
     }
 
     function renderNodeHTML(node) {
-      const bgRam = (node.ramCap * (node.loadPercent / 100)).toFixed(1);
-      const bgCpu = (node.cpuCap * (node.loadPercent / 100)).toFixed(1);
-      
       return `
         <div class="node-card" id="node-${node.id}" onclick="selectNode(${node.id})">
           <div class="node-header">
@@ -1602,24 +1663,24 @@
             <span class="score-badge" id="node-${node.id}-score-badge" style="display:none;">Score: 0</span>
           </div>
           
-          <!-- Metadata click-to-cycle configurations -->
+          <!-- Metadata cycle configurations -->
           <div class="node-meta-grid" onclick="synth.click()">
             <div class="meta-item">
-              <span class="meta-label">Zone</span>
+              <span class="meta-label">Zone 🌍</span>
               <button class="meta-btn zone-btn ${node.zone}" onclick="cycleZone(${node.id}, event)" id="node-${node.id}-zone">${node.zone}</button>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Disk</span>
+              <span class="meta-label">Disk ⚡</span>
               <button class="meta-btn disk-btn ${node.disk}" onclick="cycleDisk(${node.id}, event)" id="node-${node.id}-disk">${node.disk}</button>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Taints</span>
+              <span class="meta-label">Taints 🛑</span>
               <button class="meta-btn taint-btn ${node.taint !== 'none' ? 'active' : ''}" onclick="toggleTaint(${node.id}, event)" id="node-${node.id}-taint">
                 ${node.taint === 'gpu' ? 'gpu:NoSchedule' : 'none'}
               </button>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Existing Workloads</span>
+              <span class="meta-label">Workloads 🗄️</span>
               <div class="pod-toggles">
                 <button class="pod-btn db-btn ${node.pods.includes('db') ? 'active' : ''}" onclick="toggleExistingPod(${node.id}, 'db', event)" id="node-${node.id}-pod-db">DB</button>
                 <button class="pod-btn web-btn ${node.pods.includes('web') ? 'active' : ''}" onclick="toggleExistingPod(${node.id}, 'web', event)" id="node-${node.id}-pod-web">Web</button>
@@ -1631,27 +1692,29 @@
           <div class="node-resources">
             <div class="resource-meter">
               <div class="meter-label">
-                <span>CPU CORES</span>
-                <span id="node-${node.id}-cpu-text">${bgCpu} / ${node.cpuCap} Cores</span>
+                <span>CPU CORES ⚙️</span>
+                <span id="node-${node.id}-cpu-text">0 / 0 Cores</span>
               </div>
               <div class="meter-bar-container">
                 <div class="meter-bar-bg">
-                  <div class="meter-bar-fill background" id="node-${node.id}-cpu-bar-bg" style="width: ${node.loadPercent}%;"></div>
-                  <div class="meter-bar-fill request" id="node-${node.id}-cpu-bar-req" style="width: 0%; left: ${node.loadPercent}%;"></div>
-                  <div class="meter-bar-fill overflow" id="node-${node.id}-cpu-bar-over" style="width: 0%; left: ${node.loadPercent}%;"></div>
+                  <div class="meter-bar-fill background" id="node-${node.id}-cpu-bar-bg" style="width: 0%;"></div>
+                  <div class="meter-bar-fill scheduled" id="node-${node.id}-cpu-bar-sched" style="width: 0%; left: 0%;"></div>
+                  <div class="meter-bar-fill request" id="node-${node.id}-cpu-bar-req" style="width: 0%; left: 0%;"></div>
+                  <div class="meter-bar-fill overflow" id="node-${node.id}-cpu-bar-over" style="width: 0%; left: 0%;"></div>
                 </div>
               </div>
             </div>
             <div class="resource-meter">
               <div class="meter-label">
-                <span>RAM MEMORY</span>
-                <span id="node-${node.id}-ram-text">${bgRam} / ${node.ramCap} GB</span>
+                <span>RAM MEMORY 💾</span>
+                <span id="node-${node.id}-ram-text">0 / 0 GB</span>
               </div>
               <div class="meter-bar-container">
                 <div class="meter-bar-bg">
-                  <div class="meter-bar-fill background" id="node-${node.id}-ram-bar-bg" style="width: ${node.loadPercent}%;"></div>
-                  <div class="meter-bar-fill request" id="node-${node.id}-ram-bar-req" style="width: 0%; left: ${node.loadPercent}%;"></div>
-                  <div class="meter-bar-fill overflow" id="node-${node.id}-ram-bar-over" style="width: 0%; left: ${node.loadPercent}%;"></div>
+                  <div class="meter-bar-fill background" id="node-${node.id}-ram-bar-bg" style="width: 0%;"></div>
+                  <div class="meter-bar-fill scheduled" id="node-${node.id}-ram-bar-sched" style="width: 0%; left: 0%;"></div>
+                  <div class="meter-bar-fill request" id="node-${node.id}-ram-bar-req" style="width: 0%; left: 0%;"></div>
+                  <div class="meter-bar-fill overflow" id="node-${node.id}-ram-bar-over" style="width: 0%; left: 0%;"></div>
                 </div>
               </div>
             </div>
@@ -1675,23 +1738,82 @@
           
           <!-- Pod Landing slot -->
           <div class="landing-slot-container">
-            <span class="landing-slot-label">SCHEDULER LANDING ZONE</span>
+            <span class="landing-slot-label">SCHEDULER LANDING ZONE 🎯</span>
             <div class="landing-slot" id="node-${node.id}-landing-slot"></div>
           </div>
         </div>
       `;
     }
 
-    // Toggle manual vs auto scheduling Mode
-    function handleAutoScheduleToggle() {
-      const isAuto = document.getElementById('auto-schedule-opt').checked;
-      const runBtn = document.getElementById('run-scheduler-btn');
-      runBtn.disabled = isAuto;
+    // Toggle button settings for Node Affinity in sidebar
+    function setZoneAffinity(val) {
+      document.getElementById('pod-node-affinity').value = val;
+      const btns = document.querySelectorAll('#zone-selector .selector-btn');
+      btns.forEach(btn => {
+        if (btn.getAttribute('data-val') === val) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
       synth.click();
       handleParamChange();
     }
 
-    // Triggered when dynamic node capacity gets adjusted
+    // Toggle button settings for Preferred Disk in sidebar
+    function setDiskPreference(val) {
+      document.getElementById('pod-preferred-disk').value = val;
+      const btns = document.querySelectorAll('#disk-pref-selector .selector-btn');
+      btns.forEach(btn => {
+        if (btn.getAttribute('data-val') === val) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      synth.click();
+      handleParamChange();
+    }
+
+    // Dynamic Pod Name Generator
+    function updateGeneratedPodName() {
+      const cpu = parseFloat(document.getElementById('pod-cpu-req').value);
+      const ram = parseFloat(document.getElementById('pod-ram-req').value);
+      const zoneVal = document.getElementById('pod-node-affinity').value;
+      const diskVal = document.getElementById('pod-preferred-disk').value;
+      const tolerateGpu = document.getElementById('pod-tolerate-gpu').checked;
+      const avoidDb = document.getElementById('pod-anti-db').checked;
+      
+      let name = `pod`;
+      
+      if (zoneVal !== 'any') {
+        name += `-${zoneVal.replace('zone-', '')}`;
+      } else {
+        name += `-any`;
+      }
+      
+      name += `-c${cpu.toFixed(0).replace('.0','')}-m${ram.toFixed(0)}`;
+      
+      if (diskVal !== 'any') {
+        name += `-${diskVal}`;
+      }
+      
+      if (tolerateGpu) name += `-gpu`;
+      if (avoidDb) name += `-adb`;
+      
+      const nextNum = scheduledPodsCounter + 1;
+      name += `-${nextNum}`;
+      
+      document.getElementById('pod-name').value = name;
+      document.getElementById('deck-pod-name').innerText = name;
+    }
+
+    function handleAutoScheduleToggle() {
+      synth.click();
+      handleParamChange();
+    }
+
+    // Adjust capacity sliders on a Node
     function adjustNodeResource(nodeId, type, val) {
       const node = nodes.find(n => n.id === nodeId);
       if (!node) return;
@@ -1707,20 +1829,11 @@
         document.getElementById(`node-${nodeId}-load-val`).innerText = `${node.loadPercent}%`;
       }
 
-      // Update Node specific resource labels
-      const bgRam = (node.ramCap * (node.loadPercent / 100)).toFixed(1);
-      const bgCpu = (node.cpuCap * (node.loadPercent / 100)).toFixed(1);
-      document.getElementById(`node-${nodeId}-cpu-text`).innerText = `${bgCpu} / ${node.cpuCap} Cores`;
-      document.getElementById(`node-${nodeId}-ram-text`).innerText = `${bgRam} / ${node.ramCap} GB`;
-      
-      // Update background bar widths
-      document.getElementById(`node-${nodeId}-cpu-bar-bg`).style.width = `${node.loadPercent}%`;
-      document.getElementById(`node-${nodeId}-ram-bar-bg`).style.width = `${node.loadPercent}%`;
-      
+      updateNodeUI(nodeId);
       handleParamChange();
     }
 
-    // Interactive Node Config changes (cycling attributes)
+    // Toggle interactive badges on node card
     function cycleZone(nodeId, e) {
       e.stopPropagation();
       const node = nodes.find(n => n.id === nodeId);
@@ -1730,7 +1843,6 @@
       let nextIndex = (zones.indexOf(node.zone) + 1) % zones.length;
       node.zone = zones[nextIndex];
       
-      // update classes and values
       const btn = document.getElementById(`node-${nodeId}-zone`);
       btn.className = `meta-btn zone-btn ${node.zone}`;
       btn.innerText = node.zone;
@@ -1738,12 +1850,13 @@
       handleParamChange();
     }
 
+    // Cycle Disk type (SSD, HDD only, NVMe removed)
     function cycleDisk(nodeId, e) {
       e.stopPropagation();
       const node = nodes.find(n => n.id === nodeId);
       if (!node) return;
 
-      const disks = ['ssd', 'nvme', 'hdd'];
+      const disks = ['ssd', 'hdd'];
       let nextIndex = (disks.indexOf(node.disk) + 1) % disks.length;
       node.disk = disks[nextIndex];
 
@@ -1790,145 +1903,424 @@
       handleParamChange();
     }
 
-    // Selects a node to view its YAML specification
     function selectNode(nodeId) {
       selectedNodeId = nodeId;
       document.querySelectorAll('.node-card').forEach(card => card.classList.remove('selected'));
       document.getElementById(`node-${nodeId}`).classList.add('selected');
       
-      // play click sound
       synth.click();
-      
-      // Update YAML UI
       updateYamlView();
     }
 
-    // Triggers scheduling when settings are changed (with optional debounce for auto-schedule)
+    // Refresh UI parameters and recalculate placement preview
     function handleParamChange() {
-      // Sync deck visualization
-      const pName = document.getElementById('pod-name').value || 'my-smart-pod';
       const pCpu = parseFloat(document.getElementById('pod-cpu-req').value);
       const pRam = parseFloat(document.getElementById('pod-ram-req').value);
       
-      document.getElementById('deck-pod-name').innerText = pName;
       document.getElementById('deck-pod-cpu').innerText = pCpu.toFixed(1);
       document.getElementById('deck-pod-ram').innerText = pRam.toFixed(1) + 'G';
       
       document.getElementById('pod-cpu-val').innerText = `${pCpu.toFixed(1)} Cores`;
       document.getElementById('pod-ram-val').innerText = `${pRam.toFixed(1)} GB`;
 
-      // Update potential requests overlays on node resource bars
+      updateGeneratedPodName();
+      
+      // Update nodes text metrics and preview overlays
       nodes.forEach(node => {
-        const cpuReqPct = (pCpu / node.cpuCap) * 100;
-        const cpuTotal = node.loadPercent + cpuReqPct;
-        const cpuReqEl = document.getElementById(`node-${node.id}-cpu-bar-req`);
-        const cpuOverEl = document.getElementById(`node-${node.id}-cpu-bar-over`);
-        
-        if (cpuTotal > 100) {
-          cpuReqEl.style.width = '0%';
-          cpuOverEl.style.width = `${Math.min(cpuReqPct, 100 - node.loadPercent)}%`;
-          cpuOverEl.style.left = `${node.loadPercent}%`;
-        } else {
-          cpuOverEl.style.width = '0%';
-          cpuReqEl.style.width = `${cpuReqPct}%`;
-          cpuReqEl.style.left = `${node.loadPercent}%`;
-        }
-
-        const ramReqPct = (pRam / node.ramCap) * 100;
-        const ramTotal = node.loadPercent + ramReqPct;
-        const ramReqEl = document.getElementById(`node-${node.id}-ram-bar-req`);
-        const ramOverEl = document.getElementById(`node-${node.id}-ram-bar-over`);
-
-        if (ramTotal > 100) {
-          ramReqEl.style.width = '0%';
-          ramOverEl.style.width = `${Math.min(ramReqPct, 100 - node.loadPercent)}%`;
-          ramOverEl.style.left = `${node.loadPercent}%`;
-        } else {
-          ramOverEl.style.width = '0%';
-          ramReqEl.style.width = `${ramReqPct}%`;
-          ramReqEl.style.left = `${node.loadPercent}%`;
-        }
+        updateNodeUI(node.id);
+        updateNodePreviewBars(node, pCpu, pRam);
       });
 
       updateYamlView();
 
       const isAuto = document.getElementById('auto-schedule-opt').checked;
       if (isAuto) {
-        if (autoScheduleDebounceTimer) clearTimeout(autoScheduleDebounceTimer);
-        autoScheduleDebounceTimer = setTimeout(() => {
-          runSchedulerCore(false); // run instantly/auto-pilot
-        }, 150);
+        runSchedulerPreview();
       }
     }
 
-    function triggerManualSchedule() {
-      if (isScheduling) return;
-      synth.click();
-      runSchedulerCore(true); // run slower, showing steps and anims
+    // UI Updates for a single node card
+    function updateNodeUI(nodeId) {
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      
+      // Calculate CPU resource allocations
+      const bgCpu = (node.cpuCap * (node.loadPercent / 100));
+      const schedCpu = node.scheduledPods.reduce((sum, p) => sum + p.cpu, 0);
+      const totalCpu = bgCpu + schedCpu;
+      
+      // Calculate RAM resource allocations
+      const bgRam = (node.ramCap * (node.loadPercent / 100));
+      const schedRam = node.scheduledPods.reduce((sum, p) => sum + p.ram, 0);
+      const totalRam = bgRam + schedRam;
+      
+      // Update text overlays
+      document.getElementById(`node-${nodeId}-cpu-text`).innerText = `${totalCpu.toFixed(1)} / ${node.cpuCap.toFixed(1)} Cores`;
+      document.getElementById(`node-${nodeId}-ram-text`).innerText = `${totalRam.toFixed(1)} / ${node.ramCap.toFixed(1)} GB`;
+      
+      // Update percentage filled bar segments
+      const bgCpuPct = node.loadPercent;
+      const schedCpuPct = (schedCpu / node.cpuCap) * 100;
+      
+      document.getElementById(`node-${nodeId}-cpu-bar-bg`).style.width = `${bgCpuPct}%`;
+      const cpuSchedEl = document.getElementById(`node-${nodeId}-cpu-bar-sched`);
+      cpuSchedEl.style.width = `${schedCpuPct}%`;
+      cpuSchedEl.style.left = `${bgCpuPct}%`;
+      
+      const bgRamPct = node.loadPercent;
+      const schedRamPct = (schedRam / node.ramCap) * 100;
+      
+      document.getElementById(`node-${nodeId}-ram-bar-bg`).style.width = `${bgRamPct}%`;
+      const ramSchedEl = document.getElementById(`node-${nodeId}-ram-bar-sched`);
+      ramSchedEl.style.width = `${schedRamPct}%`;
+      ramSchedEl.style.left = `${bgRamPct}%`;
+      
+      // Clear preview indicators
+      document.getElementById(`node-${nodeId}-cpu-bar-req`).style.width = `0%`;
+      document.getElementById(`node-${nodeId}-cpu-bar-over`).style.width = `0%`;
+      document.getElementById(`node-${nodeId}-ram-bar-req`).style.width = `0%`;
+      document.getElementById(`node-${nodeId}-ram-bar-over`).style.width = `0%`;
+      
+      // Update pods badges
+      updateNodePodsList(node);
     }
 
-    // MAIN SCHEDULER ENGINE
-    function runSchedulerCore(isManualAnimate) {
-      if (isScheduling) return;
-      isScheduling = true;
+    function updateAllNodesUI() {
+      nodes.forEach(node => {
+        updateNodeUI(node.id);
+      });
+      // Sync dashboard totals
+      document.getElementById('stat-scheduled').innerText = nodes.reduce((sum, n) => sum + n.scheduledPods.length, 0);
+    }
+
+    function updateNodePodsList(node) {
+      const slot = document.getElementById(`node-${node.id}-landing-slot`);
+      slot.innerHTML = '';
+      if (node.scheduledPods.length === 0) {
+        slot.innerHTML = `<span style="font-size: 9px; color: var(--text-muted); font-style: italic;">[Empty Landing Zone]</span>`;
+      } else {
+        node.scheduledPods.forEach(p => {
+          const pill = document.createElement('div');
+          pill.className = 'scheduled-pod-token success';
+          pill.innerText = `📦 ${p.name}`;
+          pill.title = `${p.name} (CPU: ${p.cpu} Cores, RAM: ${p.ram} GB)`;
+          slot.appendChild(pill);
+        });
+      }
+    }
+
+    // Evaluates background + scheduled + new pod request sizes
+    function updateNodePreviewBars(node, podCpu, podRam) {
+      const bgCpuPct = node.loadPercent;
+      const schedCpu = node.scheduledPods.reduce((sum, p) => sum + p.cpu, 0);
+      const schedCpuPct = (schedCpu / node.cpuCap) * 100;
+      const reqCpuPct = (podCpu / node.cpuCap) * 100;
       
-      const podName = document.getElementById('pod-name').value || 'my-smart-pod';
+      const bgRamPct = node.loadPercent;
+      const schedRam = node.scheduledPods.reduce((sum, p) => sum + p.ram, 0);
+      const schedRamPct = (schedRam / node.ramCap) * 100;
+      const reqRamPct = (podRam / node.ramCap) * 100;
+      
+      const totalCpuPct = bgCpuPct + schedCpuPct + reqCpuPct;
+      const totalRamPct = bgRamPct + schedRamPct + reqRamPct;
+      
+      // CPU Bars updates
+      const cpuReqEl = document.getElementById(`node-${node.id}-cpu-bar-req`);
+      const cpuOverEl = document.getElementById(`node-${node.id}-cpu-bar-over`);
+      
+      const startCpuReq = bgCpuPct + schedCpuPct;
+      if (totalCpuPct > 100) {
+        cpuReqEl.style.width = `0%`;
+        cpuOverEl.style.width = `${Math.min(reqCpuPct, 100 - startCpuReq)}%`;
+        cpuOverEl.style.left = `${startCpuReq}%`;
+        if (startCpuReq >= 100) {
+          cpuOverEl.style.width = `100%`;
+          cpuOverEl.style.left = `0%`;
+        }
+      } else {
+        cpuOverEl.style.width = `0%`;
+        cpuReqEl.style.width = `${reqCpuPct}%`;
+        cpuReqEl.style.left = `${startCpuReq}%`;
+      }
+      
+      // RAM Bars updates
+      const ramReqEl = document.getElementById(`node-${node.id}-ram-bar-req`);
+      const ramOverEl = document.getElementById(`node-${node.id}-ram-bar-over`);
+      
+      const startRamReq = bgRamPct + schedRamPct;
+      if (totalRamPct > 100) {
+        ramReqEl.style.width = `0%`;
+        ramOverEl.style.width = `${Math.min(reqRamPct, 100 - startRamReq)}%`;
+        ramOverEl.style.left = `${startRamReq}%`;
+        if (startRamReq >= 100) {
+          ramOverEl.style.width = `100%`;
+          ramOverEl.style.left = `0%`;
+        }
+      } else {
+        ramOverEl.style.width = `0%`;
+        ramReqEl.style.width = `${reqRamPct}%`;
+        ramReqEl.style.left = `${startRamReq}%`;
+      }
+    }
+
+    // CORE SCHEDULING CALCULATION ENGINE
+    // Evaluates predicates and scores for all nodes, returns logs and details
+    function evaluateClusterScheduling(
+      podName, podCpu, podRam, reqZone, preferredDisk, tolerateGpu, avoidDb, prefBalance, prefWeb
+    ) {
+      let log = `<span class="log-info">[EVAL] ⚙️ Starting scheduling telemetry for Pod: <b>${podName}</b></span>\n`;
+      log += `<span class="log-info">[EVAL] Parameters: CPU Request = ${podCpu.toFixed(1)}, RAM Request = ${podRam.toFixed(1)} GB, Required Zone = ${reqZone}, Disk Preference = ${preferredDisk}</span>\n`;
+      log += `<span class="log-info">--------------------------------------------------------</span>\n`;
+      
+      let eligibleNodes = [];
+      let nodeResults = {};
+      
+      // 1. Predicates (Filtering)
+      log += `<span class="log-info">[FILTER] Running Predicate Filters...</span>\n`;
+      
+      nodes.forEach(node => {
+        let passed = true;
+        let reasons = [];
+        
+        const bgCpu = node.cpuCap * (node.loadPercent / 100);
+        const schedCpu = node.scheduledPods.reduce((sum, p) => sum + p.cpu, 0);
+        const freeCpu = node.cpuCap - bgCpu - schedCpu;
+        
+        const bgRam = node.ramCap * (node.loadPercent / 100);
+        const schedRam = node.scheduledPods.reduce((sum, p) => sum + p.ram, 0);
+        const freeRam = node.ramCap - bgRam - schedRam;
+        
+        // Resource fit validation
+        if (freeCpu < podCpu) {
+          passed = false;
+          reasons.push(`Insufficient CPU (Requested: ${podCpu}, Available: ${freeCpu.toFixed(1)})`);
+        }
+        if (freeRam < podRam) {
+          passed = false;
+          reasons.push(`Insufficient Memory (Requested: ${podRam}GB, Available: ${freeRam.toFixed(1)}GB)`);
+        }
+        
+        // Node Zone affinity validation
+        if (reqZone !== 'any' && node.zone !== reqZone) {
+          passed = false;
+          reasons.push(`Zone mismatch (Required: ${reqZone}, Node Zone: ${node.zone})`);
+        }
+        
+        // Taints & Tolerations validation
+        if (node.taint === 'gpu' && !tolerateGpu) {
+          passed = false;
+          reasons.push(`Blocked by Taint [gpu:NoSchedule] without Pod Toleration`);
+        }
+        
+        // Pod anti affinity check
+        if (avoidDb && node.pods.includes('db')) {
+          passed = false;
+          reasons.push(`PodAntiAffinity matched: Node has existing [DB] workload`);
+        }
+        
+        nodeResults[node.id] = {
+          passed: passed,
+          reasons: reasons,
+          score: 0,
+          breakdown: []
+        };
+        
+        if (passed) {
+          eligibleNodes.push(node);
+          log += `<span class="log-success">✔️ Node ${node.name.toUpperCase()}: Passed filtering predicates.</span>\n`;
+        } else {
+          log += `<span class="log-error">❌ Node ${node.name.toUpperCase()}: Rejected! Reason: ${reasons.join(', ')}</span>\n`;
+        }
+      });
+      
+      if (eligibleNodes.length === 0) {
+        log += `\n<span class="log-error">⚠️ [RESULT] Placement failed. No eligible nodes passed filters. Pod marked PENDING.</span>\n`;
+        return { winnerId: null, logs: log, results: nodeResults };
+      }
+      
+      // 2. Priorities (Scoring)
+      log += `\n<span class="log-info">[SCORE] Running scoring plugins on candidates...</span>\n`;
+      let maxScore = -1;
+      let winner = null;
+      
+      eligibleNodes.forEach(node => {
+        let score = 0;
+        let scoreBreakdown = [];
+        
+        // Disk preference scoring
+        if (preferredDisk !== 'any') {
+          if (node.disk === preferredDisk) {
+            if (preferredDisk === 'ssd') {
+              score += 50;
+              scoreBreakdown.push("+50 (Preferred SSD Disk Match)");
+            } else if (preferredDisk === 'hdd') {
+              score += 20;
+              scoreBreakdown.push("+20 (Preferred HDD Disk Match)");
+            }
+          }
+        }
+        
+        // Web Affinity scoring
+        if (prefWeb && node.pods.includes('web')) {
+          score += 30;
+          scoreBreakdown.push("+30 (PodAffinity: Near Web workload)");
+        }
+        
+        // Resource balancing scoring
+        if (prefBalance) {
+          const bgCpu = node.cpuCap * (node.loadPercent / 100);
+          const schedCpu = node.scheduledPods.reduce((sum, p) => sum + p.cpu, 0);
+          const freeCpu = node.cpuCap - bgCpu - schedCpu;
+          
+          const bgRam = node.ramCap * (node.loadPercent / 100);
+          const schedRam = node.scheduledPods.reduce((sum, p) => sum + p.ram, 0);
+          const freeRam = node.ramCap - bgRam - schedRam;
+          
+          const remCpuPct = Math.max(0, (freeCpu - podCpu) / node.cpuCap);
+          const remRamPct = Math.max(0, (freeRam - podRam) / node.ramCap);
+          
+          const leastReqScore = Math.round((remCpuPct + remRamPct) * 15);
+          const balancedScore = Math.round((1 - Math.abs(remCpuPct - remRamPct)) * 20);
+          
+          score += (leastReqScore + balancedScore);
+          scoreBreakdown.push(`+${leastReqScore + balancedScore} (Resource Balance: LeastReq=${leastReqScore}, Balanced=${balancedScore})`);
+        }
+        
+        nodeResults[node.id].score = score;
+        nodeResults[node.id].breakdown = scoreBreakdown;
+        
+        log += `<span class="log-score">⚖️ Node ${node.name.toUpperCase()}: Total Score = <b>${score}</b> [Breakdown: ${scoreBreakdown.join(', ') || 'No preferences hit'}]</span>\n`;
+        
+        if (score > maxScore) {
+          maxScore = score;
+          winner = node;
+        } else if (score === maxScore && winner !== null) {
+          // Tiebreaker: RAM capacity
+          if (node.ramCap > winner.ramCap) {
+            winner = node;
+            log += `<span class="log-debug">⚓ [TIEBREAKER] Tied score! Selected Node ${node.name.toUpperCase()} due to larger RAM Capacity.</span>\n`;
+          }
+        }
+      });
+      
+      log += `\n<span class="log-success">🎉 [RESULT] Scheduler selected target: <b>${winner.name.toUpperCase()}</b> (Highest Score: ${maxScore})</span>\n`;
+      return { winnerId: winner.id, logs: log, results: nodeResults };
+    }
+
+    // Predicts the target node placement for Preview
+    function runSchedulerPreview() {
+      const podName = document.getElementById('pod-name').value;
       const podCpu = parseFloat(document.getElementById('pod-cpu-req').value);
       const podRam = parseFloat(document.getElementById('pod-ram-req').value);
       const reqZone = document.getElementById('pod-node-affinity').value;
-      const avoidDb = document.getElementById('pod-anti-db').checked;
+      const preferredDisk = document.getElementById('pod-preferred-disk').value;
       const tolerateGpu = document.getElementById('pod-tolerate-gpu').checked;
-      
-      const prefSsd = document.getElementById('pod-pref-ssd').checked;
-      const prefNvme = document.getElementById('pod-pref-nvme').checked;
-      const prefWeb = document.getElementById('pod-pref-web').checked;
+      const avoidDb = document.getElementById('pod-anti-db').checked;
       const prefBalance = document.getElementById('pod-balance-resources').checked;
+      const prefWeb = document.getElementById('pod-pref-web').checked;
 
-      // Update engine states
+      const evalData = evaluateClusterScheduling(
+        podName, podCpu, podRam, reqZone, preferredDisk, tolerateGpu, avoidDb, prefBalance, prefWeb
+      );
+      
+      previewWinnerNodeId = evalData.winnerId;
+      
+      // Update logs console
+      const logBox = document.getElementById('log-box');
+      logBox.innerHTML = evalData.logs;
+      logBox.scrollTop = logBox.scrollHeight;
+      
+      // Reset card visual classes
+      document.querySelectorAll('.node-card').forEach(card => {
+        card.classList.remove('filter-passed', 'filter-failed', 'winner-node', 'evaluating-target');
+        card.querySelector('.status-indicator').className = 'status-indicator idle';
+        card.querySelector('.score-badge').style.display = 'none';
+      });
+      
+      // Update visual indicators based on evaluation results
+      nodes.forEach(node => {
+        const card = document.getElementById(`node-${node.id}`);
+        const statusLED = card.querySelector('.status-indicator');
+        const nodeRes = evalData.results[node.id];
+        
+        if (nodeRes.passed) {
+          card.classList.add('filter-passed');
+          statusLED.className = 'status-indicator success';
+          
+          if (evalData.winnerId) {
+            const badge = card.querySelector('.score-badge');
+            badge.style.display = 'block';
+            badge.innerText = `Score: ${nodeRes.score}`;
+          }
+        } else {
+          card.classList.add('filter-failed');
+          statusLED.className = 'status-indicator failed';
+        }
+      });
+      
+      if (evalData.winnerId) {
+        document.getElementById(`node-${evalData.winnerId}`).classList.add('evaluating-target');
+        document.getElementById('stat-status').innerText = "PREVIEW READY";
+        document.getElementById('stat-status').style.color = "var(--cyan)";
+      } else {
+        document.getElementById('stat-status').innerText = "PENDING PREVIEW";
+        document.getElementById('stat-status').style.color = "var(--pink)";
+      }
+    }
+
+    // Deploy action
+    function triggerDeployment() {
+      if (isScheduling) return;
+      
+      const isAutoMode = document.getElementById('auto-schedule-opt').checked;
+      
+      if (isAutoMode) {
+        // Runs preview evaluation instantly and fires flight animation directly
+        runSchedulerPreview();
+        executeActualDeploy(previewWinnerNodeId);
+      } else {
+        // Run full step-by-step scanning telemetry
+        runSchedulerManualWorkflow();
+      }
+    }
+
+    // Async Manual step-by-step scanner workflow (with evaluation logs output)
+    async function runSchedulerManualWorkflow() {
+      isScheduling = true;
+      toggleInteractiveElements(true);
+      
+      const podName = document.getElementById('pod-name').value;
+      const podCpu = parseFloat(document.getElementById('pod-cpu-req').value);
+      const podRam = parseFloat(document.getElementById('pod-ram-req').value);
+      const reqZone = document.getElementById('pod-node-affinity').value;
+      const preferredDisk = document.getElementById('pod-preferred-disk').value;
+      const tolerateGpu = document.getElementById('pod-tolerate-gpu').checked;
+      const avoidDb = document.getElementById('pod-anti-db').checked;
+      const prefBalance = document.getElementById('pod-balance-resources').checked;
+      const prefWeb = document.getElementById('pod-pref-web').checked;
+
+      const evalData = evaluateClusterScheduling(
+        podName, podCpu, podRam, reqZone, preferredDisk, tolerateGpu, avoidDb, prefBalance, prefWeb
+      );
+      
+      const logBox = document.getElementById('log-box');
+      logBox.innerHTML = `<span class="log-info">[INIT] 🚀 Starting kube-scheduler deployment cycle...</span>\n`;
+      logBox.innerHTML += `<span class="log-info">[INIT] Deploying Pod: <b>${podName}</b> (CPU: ${podCpu} Cores, Memory: ${podRam} GB)</span>\n`;
+      logBox.innerHTML += `<span class="log-info">========================================================</span>\n`;
+      
       document.getElementById('stat-status').innerText = "EVALUATING";
       document.getElementById('stat-status').style.color = "var(--amber)";
       document.getElementById('pod-deck-container').classList.add('evaluating');
       
       // Reset visuals
       document.querySelectorAll('.node-card').forEach(card => {
-        card.classList.remove('scanning', 'filter-passed', 'filter-failed', 'winner-node');
-        const statusLED = card.querySelector('.status-indicator');
-        statusLED.className = 'status-indicator evaluating';
-        
-        const badge = card.querySelector('.score-badge');
-        badge.style.display = 'none';
+        card.classList.remove('scanning', 'filter-passed', 'filter-failed', 'winner-node', 'evaluating-target');
+        card.querySelector('.status-indicator').className = 'status-indicator evaluating';
+        card.querySelector('.score-badge').style.display = 'none';
       });
 
-      document.querySelectorAll('.scheduled-pod-token').forEach(tok => tok.remove());
-
-      // If manual animate mode, we run a set of async steps
-      if (isManualAnimate) {
-        executeManualSchedulingWorkflow(
-          podName, podCpu, podRam, reqZone, avoidDb, tolerateGpu,
-          prefSsd, prefNvme, prefWeb, prefBalance
-        );
-      } else {
-        executeInstantSchedulingWorkflow(
-          podName, podCpu, podRam, reqZone, avoidDb, tolerateGpu,
-          prefSsd, prefNvme, prefWeb, prefBalance
-        );
-      }
-    }
-
-    // Async Manual step-by-step telemetry evaluation
-    async function executeManualSchedulingWorkflow(
-      podName, podCpu, podRam, reqZone, avoidDb, tolerateGpu,
-      prefSsd, prefNvme, prefWeb, prefBalance
-    ) {
-      const logBox = document.getElementById('log-box');
-      logBox.innerHTML = `<span class="log-info">[INIT] Initializing kube-scheduler (v1.30.0-cyber)...</span>\n`;
-      logBox.innerHTML += `<span class="log-info">[INIT] Scheduling request received for Pod: <b>${podName}</b> (CPU: ${podCpu} Cores, Memory: ${podRam} GB)</span>\n`;
-      logBox.innerHTML += `<span class="log-info">========================================================</span>\n`;
-      
-      // Step 1: Filter/Predicate Phase
-      logBox.innerHTML += `<span class="log-info">[FILTER] Running Predicate Filters on nodes...</span>\n`;
-      
-      let eligibleNodes = [];
+      // Filter step
+      logBox.innerHTML += `<span class="log-info">[FILTER] 🛑 Executing filtering predicates...</span>\n`;
       
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
@@ -1940,271 +2332,93 @@
         
         card.classList.remove('scanning');
         
-        // Predicates validation logic
-        let passed = true;
-        let reasons = [];
-        
-        // Resource Fit
-        const freeCpu = node.cpuCap * (1 - node.loadPercent/100);
-        const freeRam = node.ramCap * (1 - node.loadPercent/100);
-        
-        if (freeCpu < podCpu) {
-          passed = false;
-          reasons.push(`Insufficient CPU (${freeCpu.toFixed(1)} cores remaining)`);
-        }
-        if (freeRam < podRam) {
-          passed = false;
-          reasons.push(`Insufficient RAM (${freeRam.toFixed(1)} GB remaining)`);
-        }
-        
-        // Node Zone Affinity
-        if (reqZone !== 'any' && node.zone !== reqZone) {
-          passed = false;
-          reasons.push(`Zone mismatch (Node in ${node.zone}, requested ${reqZone})`);
-        }
-        
-        // Taints & Tolerations
-        if (node.taint === 'gpu' && !tolerateGpu) {
-          passed = false;
-          reasons.push(`Node has Taint [gpu:NoSchedule] without Pod Toleration`);
-        }
-        
-        // Pod Anti-Affinity
-        if (avoidDb && node.pods.includes('db')) {
-          passed = false;
-          reasons.push(`Anti-Affinity mismatch: Node runs Pod [DB]`);
-        }
-
+        const nodeRes = evalData.results[node.id];
         const statusLED = card.querySelector('.status-indicator');
         
-        if (passed) {
+        if (nodeRes.passed) {
           card.classList.add('filter-passed');
           statusLED.className = 'status-indicator success';
-          eligibleNodes.push(node);
-          logBox.innerHTML += `<span class="log-success">✔️ [FILTER] Node ${node.name.toUpperCase()}: Passed filtering predicates.</span>\n`;
+          logBox.innerHTML += `<span class="log-success">✔️ Node ${node.name.toUpperCase()}: Passed filtering predicates.</span>\n`;
         } else {
           card.classList.add('filter-failed');
           statusLED.className = 'status-indicator failed';
-          logBox.innerHTML += `<span class="log-error">❌ [FILTER] Node ${node.name.toUpperCase()}: Rejected! Reason: ${reasons.join(', ')}</span>\n`;
+          logBox.innerHTML += `<span class="log-error">❌ Node ${node.name.toUpperCase()}: Failed filtering predicates! Reasons: ${nodeRes.reasons.join(', ')}</span>\n`;
         }
         
         logBox.scrollTop = logBox.scrollHeight;
       }
       
-      await sleep(400);
+      await sleep(350);
 
-      // Step 2: Scoring Phase
-      if (eligibleNodes.length === 0) {
-        logBox.innerHTML += `\n<span class="log-error">[RESULT] ⚠️ Placement Failed! No eligible nodes found to schedule Pod: ${podName}</span>\n`;
-        logBox.innerHTML += `<span class="log-error">[RESULT] Pod state set to: <b>PENDING</b></span>\n`;
+      // Scoring step
+      if (!evalData.winnerId) {
+        logBox.innerHTML += `\n<span class="log-error">⚠️ [RESULT] Placement failed. Out of cluster resources. Pod in PENDING state.</span>\n`;
         logBox.scrollTop = logBox.scrollHeight;
-        
-        await completeSchedulingSequence(null, podName);
+        executeActualDeploy(null);
         return;
       }
       
-      logBox.innerHTML += `\n<span class="log-info">[SCORE] Running scoring plugins on remaining candidates...</span>\n`;
-      let scoredCandidates = [];
-      let maxScore = -1;
-      let winnerNode = null;
+      logBox.innerHTML += `\n<span class="log-info">[SCORE] ⚖️ Executing scoring priorities...</span>\n`;
       
-      for (let i = 0; i < eligibleNodes.length; i++) {
-        const node = eligibleNodes[i];
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const nodeRes = evalData.results[node.id];
+        if (!nodeRes.passed) continue;
+        
         const card = document.getElementById(`node-${node.id}`);
-        let score = 0;
-        let scoreBreakdown = [];
-        
-        // SSD preference
-        if (prefSsd && node.disk === 'ssd') {
-          score += 50;
-          scoreBreakdown.push("+50 (SSD disk preference)");
-        }
-        // NVMe preference
-        if (prefNvme && node.disk === 'nvme') {
-          score += 70;
-          scoreBreakdown.push("+70 (NVMe disk preference)");
-        }
-        // Web Affinity preference
-        if (prefWeb && node.pods.includes('web')) {
-          score += 30;
-          scoreBreakdown.push("+30 (PodAffinity: Near Web workload)");
-        }
-        // Resource balancing preference
-        if (prefBalance) {
-          const freeCpu = node.cpuCap * (1 - node.loadPercent/100);
-          const freeRam = node.ramCap * (1 - node.loadPercent/100);
-          const remCpuPct = Math.max(0, (freeCpu - podCpu) / node.cpuCap);
-          const remRamPct = Math.max(0, (freeRam - podRam) / node.ramCap);
-          
-          // least requested component
-          const leastReqScore = Math.round((remCpuPct + remRamPct) * 15);
-          // balanced component
-          const balancedScore = Math.round((1 - Math.abs(remCpuPct - remRamPct)) * 20);
-          
-          score += (leastReqScore + balancedScore);
-          scoreBreakdown.push(`+${leastReqScore + balancedScore} (Balanced Resources: LeastReq=${leastReqScore}, Balanced=${balancedScore})`);
-        }
-        
-        scoredCandidates.push({ node, score });
-        
-        // Visual text count up animation for scores
+        const score = nodeRes.score;
         const scoreBadge = card.querySelector('.score-badge');
         scoreBadge.style.display = 'block';
         scoreBadge.innerText = 'Score: 0';
         
         synth.tick();
         
-        // Count up score
+        // Count up score visually
         let currentCount = 0;
-        const step = Math.ceil(score / 10);
+        const step = Math.ceil(score / 8);
         while (currentCount < score) {
           currentCount = Math.min(score, currentCount + step);
           scoreBadge.innerText = `Score: ${currentCount}`;
           await sleep(40);
         }
         
-        logBox.innerHTML += `<span class="log-score">⚖️ [SCORE] Node ${node.name.toUpperCase()}: Total Score = <b>${score}</b> [Breakdown: ${scoreBreakdown.join(', ') || 'No preference hit'}]</span>\n`;
+        logBox.innerHTML += `<span class="log-score">⚖️ Node ${node.name.toUpperCase()}: Total Score = <b>${score}</b> [Breakdown: ${nodeRes.breakdown.join(', ') || 'none'}]</span>\n`;
         logBox.scrollTop = logBox.scrollHeight;
-        
-        if (score > maxScore) {
-          maxScore = score;
-          winnerNode = node;
-        } else if (score === maxScore && winnerNode !== null) {
-          // Tiebreaker: choose node with more total RAM
-          if (node.ramCap > winnerNode.ramCap) {
-            winnerNode = node;
-            logBox.innerHTML += `<span class="log-debug">⚓ [TIEBREAKER] Tied score! Selected Node ${node.name.toUpperCase()} due to larger RAM Capacity.</span>\n`;
-          }
-        }
       }
       
-      await sleep(300);
+      await sleep(350);
       
-      // Step 3: Highlight Winner Node
+      // Winner phase
+      const winnerNode = nodes.find(n => n.id === evalData.winnerId);
       const winCard = document.getElementById(`node-${winnerNode.id}`);
       winCard.classList.add('winner-node');
       
-      logBox.innerHTML += `\n<span class="log-success">🎉 [RESULT] Scheduler selected target: <b>${winnerNode.name.toUpperCase()}</b> (Score: ${maxScore})</span>\n`;
-      logBox.innerHTML += `<span class="log-success">[RESULT] Dispatching binding payload to API server...</span>\n`;
+      logBox.innerHTML += `\n<span class="log-success">🎉 [RESULT] Pod scheduled on winner node: <b>${winnerNode.name.toUpperCase()}</b>!</span>\n`;
       logBox.scrollTop = logBox.scrollHeight;
       
-      await completeSchedulingSequence(winnerNode.id, podName);
+      executeActualDeploy(evalData.winnerId);
     }
 
-    // Instant Telemetry evaluation for auto-scheduling mode
-    function executeInstantSchedulingWorkflow(
-      podName, podCpu, podRam, reqZone, avoidDb, tolerateGpu,
-      prefSsd, prefNvme, prefWeb, prefBalance
-    ) {
+    // Handles flight animation and commits pod resources
+    function executeActualDeploy(winnerId) {
+      isScheduling = true;
+      toggleInteractiveElements(true);
+      
+      const podName = document.getElementById('pod-name').value;
+      const podCpu = parseFloat(document.getElementById('pod-cpu-req').value);
+      const podRam = parseFloat(document.getElementById('pod-ram-req').value);
+      const isAutoMode = document.getElementById('auto-schedule-opt').checked;
+      
       const logBox = document.getElementById('log-box');
-      logBox.innerHTML = `<span class="log-info">[AUTO-PILOT] Re-evaluating scheduling paths...</span>\n`;
-      
-      let eligibleNodes = [];
-      
-      // Fast Filter Check
-      nodes.forEach(node => {
-        const card = document.getElementById(`node-${node.id}`);
-        const statusLED = card.querySelector('.status-indicator');
-        
-        let passed = true;
-        let reasons = [];
-        
-        const freeCpu = node.cpuCap * (1 - node.loadPercent/100);
-        const freeRam = node.ramCap * (1 - node.loadPercent/100);
-        
-        if (freeCpu < podCpu) { passed = false; reasons.push(`Low CPU`); }
-        if (freeRam < podRam) { passed = false; reasons.push(`Low Memory`); }
-        if (reqZone !== 'any' && node.zone !== reqZone) { passed = false; reasons.push(`Wrong zone`); }
-        if (node.taint === 'gpu' && !tolerateGpu) { passed = false; reasons.push(`GPU Tainted`); }
-        if (avoidDb && node.pods.includes('db')) { passed = false; reasons.push(`Anti-DB`); }
-        
-        if (passed) {
-          card.classList.add('filter-passed');
-          statusLED.className = 'status-indicator success';
-          eligibleNodes.push(node);
-        } else {
-          card.classList.add('filter-failed');
-          statusLED.className = 'status-indicator failed';
-          logBox.innerHTML += `<span class="log-error">❌ Filter Failed on Node ${node.name.toUpperCase()}: ${reasons.join(', ')}</span>\n`;
-        }
-      });
-      
-      if (eligibleNodes.length === 0) {
-        logBox.innerHTML += `<span class="log-error">⚠️ [AUTO-PILOT] Scheduling failed: No eligible nodes. State: PENDING</span>\n`;
-        completeSchedulingSequenceInstant(null, podName);
-        return;
+      if (isAutoMode) {
+        logBox.innerHTML += `<span class="log-info">[DEPLOY] Deploying pod ${podName}...</span>\n`;
       }
       
-      // Fast Scoring
-      let maxScore = -1;
-      let winnerNode = null;
+      const flightDuration = isAutoMode ? 350 : 700;
       
-      eligibleNodes.forEach(node => {
-        const card = document.getElementById(`node-${node.id}`);
-        let score = 0;
-        
-        if (prefSsd && node.disk === 'ssd') score += 50;
-        if (prefNvme && node.disk === 'nvme') score += 70;
-        if (prefWeb && node.pods.includes('web')) score += 30;
-        if (prefBalance) {
-          const freeCpu = node.cpuCap * (1 - node.loadPercent/100);
-          const freeRam = node.ramCap * (1 - node.loadPercent/100);
-          const remCpuPct = Math.max(0, (freeCpu - podCpu) / node.cpuCap);
-          const remRamPct = Math.max(0, (freeRam - podRam) / node.ramCap);
-          const leastReqScore = Math.round((remCpuPct + remRamPct) * 15);
-          const balancedScore = Math.round((1 - Math.abs(remCpuPct - remRamPct)) * 20);
-          score += (leastReqScore + balancedScore);
-        }
-        
-        const scoreBadge = card.querySelector('.score-badge');
-        scoreBadge.style.display = 'block';
-        scoreBadge.innerText = `Score: ${score}`;
-        
-        logBox.innerHTML += `<span class="log-score">⚖️ Score Candidate ${node.name.toUpperCase()}: ${score} pts</span>\n`;
-        
-        if (score > maxScore) {
-          maxScore = score;
-          winnerNode = node;
-        } else if (score === maxScore && winnerNode !== null) {
-          if (node.ramCap > winnerNode.ramCap) {
-            winnerNode = node;
-          }
-        }
-      });
-      
-      const winCard = document.getElementById(`node-${winnerNode.id}`);
-      winCard.classList.add('winner-node');
-      
-      logBox.innerHTML += `<span class="log-success">🎉 Scheduled Pod ${podName} -> Target Node: <b>${winnerNode.name.toUpperCase()}</b></span>\n`;
-      logBox.scrollTop = logBox.scrollHeight;
-      
-      completeSchedulingSequenceInstant(winnerNode.id, podName);
-    }
-
-    // Handles the CSS flight animation and landing sequences
-    async function completeSchedulingSequence(winnerNodeId, podName) {
-      const flightDuration = 700;
-      animateFlightToken(winnerNodeId, podName, flightDuration);
-      
-      await sleep(flightDuration + 100);
-      
-      finishSchedulerReset(winnerNodeId);
-    }
-
-    function completeSchedulingSequenceInstant(winnerNodeId, podName) {
-      const flightDuration = 350;
-      animateFlightToken(winnerNodeId, podName, flightDuration);
-      
-      setTimeout(() => {
-        finishSchedulerReset(winnerNodeId);
-      }, flightDuration + 50);
-    }
-
-    // Creating the flying pod element and animating it to its target
-    function animateFlightToken(winnerNodeId, podName, duration) {
       const sourcePod = document.getElementById('source-pod-visual');
-      const destSlot = winnerNodeId 
-        ? document.getElementById(`node-${winnerNodeId}-landing-slot`)
+      const destSlot = winnerId 
+        ? document.getElementById(`node-${winnerId}-landing-slot`)
         : document.getElementById('pending-slot');
         
       if (!sourcePod || !destSlot) return;
@@ -2212,15 +2426,11 @@
       const sourceRect = sourcePod.getBoundingClientRect();
       const destRect = destSlot.getBoundingClientRect();
       
-      // Clear previous scheduled indicators
-      document.querySelectorAll('.scheduled-pod-token').forEach(t => t.remove());
-
       // Create animated copy
       const flyer = document.createElement('div');
       flyer.className = 'flying-pod-token';
       flyer.innerText = `📦 ${podName}`;
       
-      // Style base sizes and initial coords
       flyer.style.width = sourceRect.width + 'px';
       flyer.style.height = sourceRect.height + 'px';
       flyer.style.left = (sourceRect.left + window.scrollX) + 'px';
@@ -2228,17 +2438,16 @@
       
       document.body.appendChild(flyer);
       
-      // Play sound
       synth.swoosh();
       
       // Force reflow
       flyer.offsetWidth;
       
-      // Trigger CSS Transition
-      flyer.style.transition = `all ${duration}ms cubic-bezier(0.25, 1, 0.5, 1.25)`;
+      // Apply transitions
+      flyer.style.transition = `all ${flightDuration}ms cubic-bezier(0.25, 1, 0.5, 1.25)`;
       flyer.style.left = (destRect.left + window.scrollX + (destRect.width - sourceRect.width) / 2) + 'px';
       flyer.style.top = (destRect.top + window.scrollY + (destRect.height - sourceRect.height) / 2) + 'px';
-      flyer.style.transform = 'scale(0.8)';
+      flyer.style.transform = 'scale(0.85)';
       flyer.style.opacity = '0.9';
       
       destSlot.classList.add('targeting');
@@ -2249,78 +2458,91 @@
           flyer.remove();
         }
         
-        // Append actual token to slot
-        if (winnerNodeId) {
-          const landed = document.createElement('div');
-          landed.className = 'scheduled-pod-token success';
-          landed.innerText = `📦 ${podName}`;
-          destSlot.appendChild(landed);
+        document.getElementById('pod-deck-container').classList.remove('evaluating');
+        
+        if (winnerId) {
+          // Commit pod resources
+          const node = nodes.find(n => n.id === winnerId);
+          node.scheduledPods.push({ name: podName, cpu: podCpu, ram: podRam });
           
-          const targetCard = document.getElementById(`node-${winnerNodeId}`);
+          logBox.innerHTML += `<span class="log-success">✔️ [DEPLOY] Pod ${podName} successfully running on node ${node.name.toUpperCase()}!</span>\n`;
+          synth.success();
+          
+          // Flash target card
+          const targetCard = document.getElementById(`node-${winnerId}`);
+          targetCard.classList.remove('winner-node');
           targetCard.classList.add('scheduled-success');
           setTimeout(() => targetCard.classList.remove('scheduled-success'), 800);
           
-          synth.success();
+          document.getElementById('stat-status').innerText = "SUCCESS";
+          document.getElementById('stat-status').style.color = "var(--lime)";
         } else {
+          // Pending placement
+          logBox.innerHTML += `<span class="log-warn">⚠️ [DEPLOY] Pod is placed in PENDING queue.</span>\n`;
+          synth.fail();
+          
           const landed = document.createElement('div');
           landed.className = 'scheduled-pod-token pending';
-          landed.innerText = `⚠️ PENDING`;
+          landed.innerText = `⚠️ ${podName}`;
           destSlot.appendChild(landed);
           
-          synth.fail();
+          document.getElementById('stat-status').innerText = "PENDING";
+          document.getElementById('stat-status').style.color = "var(--pink)";
         }
-      }, duration);
-    }
-
-    function finishSchedulerReset(winnerNodeId) {
-      document.getElementById('pod-deck-container').classList.remove('evaluating');
-      
-      const statusLabel = document.getElementById('stat-status');
-      const schedulerCount = document.getElementById('stat-scheduled');
-      
-      if (winnerNodeId) {
-        statusLabel.innerText = "SUCCESS";
-        statusLabel.style.color = "var(--lime)";
-        schedulerCount.innerText = "1";
-      } else {
-        statusLabel.innerText = "PENDING";
-        statusLabel.style.color = "var(--pink)";
-        schedulerCount.innerText = "0";
-      }
-      
-      // Reset node LED indicators based on final placement
-      nodes.forEach(node => {
-        const card = document.getElementById(`node-${node.id}`);
-        const indicator = card.querySelector('.status-indicator');
         
-        if (node.id === winnerNodeId) {
-          indicator.className = 'status-indicator success';
-        } else {
-          // If it was evaluating, reset to idle/passed/failed states
-          if (card.classList.contains('filter-failed')) {
-            indicator.className = 'status-indicator failed';
-          } else {
-            indicator.className = 'status-indicator idle';
-          }
-        }
-      });
-      
-      isScheduling = false;
-      
-      // Auto-select winner node to show its YAML manifest!
-      if (winnerNodeId) {
-        selectNode(winnerNodeId);
-      }
-      
-      updateYamlView();
+        logBox.scrollTop = logBox.scrollHeight;
+        
+        // Increment pod counter
+        scheduledPodsCounter++;
+        
+        // Re-enable UI
+        isScheduling = false;
+        toggleInteractiveElements(false);
+        
+        // Sync everything and trigger next preview
+        handleParamChange();
+      }, flightDuration + 50);
     }
 
-    // Helper sleep timer
-    function sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
+    function toggleInteractiveElements(disabled) {
+      document.getElementById('run-scheduler-btn').disabled = disabled;
+      document.getElementById('reset-cluster-btn').disabled = disabled;
+      document.querySelectorAll('.mini-slider').forEach(s => s.disabled = disabled);
+      document.querySelectorAll('.meta-btn').forEach(b => b.disabled = disabled);
+      document.querySelectorAll('.pod-btn').forEach(b => b.disabled = disabled);
+      document.querySelectorAll('.selector-btn').forEach(b => b.disabled = disabled);
     }
 
-    // TAB MANAGEMENT
+    // Reset cluster to default settings
+    function resetCluster() {
+      if (isScheduling) return;
+      synth.reset();
+      
+      resetNodesArray();
+      scheduledPodsCounter = 0;
+      
+      // Clear pending slot
+      document.getElementById('pending-slot').innerHTML = '';
+      
+      initClusterUI();
+      
+      const logBox = document.getElementById('log-box');
+      logBox.innerHTML = `<span class="log-success">🧹 [RESET] Cluster state successfully reset to initial defaults. All scheduled pods removed.</span>\n`;
+      
+      document.getElementById('stat-scheduled').innerText = "0";
+      document.getElementById('stat-status').innerText = "IDLE";
+      document.getElementById('stat-status').style.color = "var(--text-muted)";
+      
+      handleParamChange();
+      
+      // Show toaster notification
+      const toast = document.getElementById('toast-notify');
+      toast.innerText = "CLUSTER RESET SUCCESSFUL 🧹";
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // TABS MANAGEMENT
     function switchTab(tabId) {
       currentTab = tabId;
       document.getElementById('tab-btn-logs').classList.remove('active');
@@ -2355,7 +2577,7 @@
       switchYamlSubtab('pod');
     }
 
-    // MANIFEST GENERATION & HIGHLIGHTS
+    // MANIFEST GENERATION & YAML OUTPUT
     function updateYamlView() {
       const box = document.getElementById('yaml-box-content');
       let yamlText = '';
@@ -2376,11 +2598,9 @@
       const pCpu = parseFloat(document.getElementById('pod-cpu-req').value);
       const pRam = parseFloat(document.getElementById('pod-ram-req').value);
       const reqZone = document.getElementById('pod-node-affinity').value;
-      const avoidDb = document.getElementById('pod-anti-db').checked;
+      const preferredDisk = document.getElementById('pod-preferred-disk').value;
       const tolerateGpu = document.getElementById('pod-tolerate-gpu').checked;
-      
-      const prefSsd = document.getElementById('pod-pref-ssd').checked;
-      const prefNvme = document.getElementById('pod-pref-nvme').checked;
+      const avoidDb = document.getElementById('pod-anti-db').checked;
       const prefWeb = document.getElementById('pod-pref-web').checked;
 
       let yaml = `# 📦 Manifest specification for target Pod: ${pName}\n`;
@@ -2398,16 +2618,13 @@
       yaml += `      requests:\n`;
       yaml += `        cpu: "${pCpu.toFixed(1)}"\n`;
       yaml += `        memory: "${pRam.toFixed(1)}Gi"\n`;
-      yaml += `      limits:\n`;
-      yaml += `        cpu: "${(pCpu * 2).toFixed(1)}"\n`;
-      yaml += `        memory: "${(pRam * 1.5).toFixed(1)}Gi"\n`;
 
-      let hasAffinity = (reqZone !== 'any' || prefSsd || prefNvme || prefWeb || avoidDb);
+      let hasAffinity = (reqZone !== 'any' || preferredDisk !== 'any' || prefWeb || avoidDb);
       if (hasAffinity) {
         yaml += `  affinity:\n`;
       }
 
-      if (reqZone !== 'any' || prefSsd || prefNvme) {
+      if (reqZone !== 'any' || preferredDisk !== 'any') {
         yaml += `    nodeAffinity:\n`;
         if (reqZone !== 'any') {
           yaml += `      requiredDuringSchedulingIgnoredDuringExecution:\n`;
@@ -2418,26 +2635,18 @@
           yaml += `            values:\n`;
           yaml += `            - ${reqZone}\n`;
         }
-        if (prefSsd || prefNvme) {
+        if (preferredDisk !== 'any') {
           yaml += `      preferredDuringSchedulingIgnoredDuringExecution:\n`;
-          if (prefNvme) {
-            yaml += `      - weight: 70\n`;
-            yaml += `        preference:\n`;
-            yaml += `          matchExpressions:\n`;
-            yaml += `          - key: disk\n`;
-            yaml += `            operator: In\n`;
-            yaml += `            values:\n`;
-            yaml += `            - nvme\n`;
-          }
-          if (prefSsd) {
-            yaml += `      - weight: 50\n`;
-            yaml += `        preference:\n`;
-            yaml += `          matchExpressions:\n`;
-            yaml += `          - key: disk\n`;
-            yaml += `            operator: In\n`;
-            yaml += `            values:\n`;
-            yaml += `            - ssd\n`;
-          }
+          let weight = 50;
+          if (preferredDisk === 'hdd') weight = 20;
+          
+          yaml += `      - weight: ${weight}\n`;
+          yaml += `        preference:\n`;
+          yaml += `          matchExpressions:\n`;
+          yaml += `          - key: disk\n`;
+          yaml += `            operator: In\n`;
+          yaml += `            values:\n`;
+          yaml += `            - ${preferredDisk}\n`;
         }
       }
 
@@ -2448,7 +2657,7 @@
         yaml += `        podAffinityTerm:\n`;
         yaml += `          labelSelector:\n`;
         yaml += `            matchLabels:\n`;
-          yaml += `              app: web\n`;
+        yaml += `              app: web\n`;
         yaml += `          topologyKey: kubernetes.io/hostname\n`;
       }
 
@@ -2508,6 +2717,15 @@
       yaml += `    cpu: "${allocCpu}"\n`;
       yaml += `    memory: "${allocRam}Gi"\n`;
       
+      if (node.scheduledPods.length > 0) {
+        yaml += `  runningPods:\n`;
+        node.scheduledPods.forEach(p => {
+          yaml += `  - name: "${p.name}"\n`;
+          yaml += `    cpuRequest: "${p.cpu.toFixed(1)}"\n`;
+          yaml += `    memoryRequest: "${p.ram.toFixed(1)}Gi"\n`;
+        });
+      }
+      
       return yaml;
     }
 
@@ -2517,20 +2735,13 @@
       let yaml = `# ⚙️ kube-scheduler Custom Profile Configuration\n`;
       yaml += `apiVersion: kubescheduler.config.k8s.io/v1\n`;
       yaml += `kind: KubeSchedulerConfiguration\n`;
-      yaml += `leaderElection:\n`;
-      yaml += `  leaderElect: true\n`;
       yaml += `profiles:\n`;
       yaml += `- schedulerName: custom-telemetry-scheduler\n`;
       yaml += `  plugins:\n`;
-      yaml += `    preFilter:\n`;
-      yaml += `      enabled:\n`;
-      yaml += `      - name: "NodeResourcesFit"\n`;
-      yaml += `      - name: "NodePorts"\n`;
       yaml += `    filter:\n`;
       yaml += `      enabled:\n`;
       yaml += `      - name: "NodeResourcesFit"\n`;
       yaml += `      - name: "NodeName"\n`;
-      yaml += `      - name: "NodePorts"\n`;
       yaml += `      - name: "NodeAffinity"\n`;
       yaml += `      - name: "NodeTaints"\n`;
       yaml += `      - name: "PodTopologySpread"\n`;
@@ -2543,11 +2754,7 @@
       if (prefBalance) {
         yaml += `      - name: "NodeResourcesBalancedAllocation"\n`;
         yaml += `        weight: 5\n`;
-        yaml += `      - name: "NodeResourcesLeastAllocated"\n`;
-        yaml += `        weight: 4\n`;
       }
-      yaml += `      - name: "ImageLocality"\n`;
-      yaml += `        weight: 1\n`;
       
       return yaml;
     }
@@ -2566,7 +2773,6 @@
         .replace(/(:\s*)(true|false|NoSchedule|Exists|In|\[\])\b/g, '$1<span class="yaml-keyword">$2</span>');
     }
 
-    // Copies current active yaml text to clipboard
     function copyYamlText() {
       let yamlText = '';
       if (currentYamlSubtab === 'pod') {
@@ -2580,7 +2786,6 @@
       navigator.clipboard.writeText(yamlText).then(() => {
         synth.success();
         
-        // Show toaster notification
         const toast = document.getElementById('toast-notify');
         toast.innerText = `${currentYamlSubtab.toUpperCase()} MANIFEST COPIED TO CLIPBOARD!`;
         toast.classList.add('show');
