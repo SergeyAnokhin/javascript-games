@@ -1,269 +1,2593 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>K8s Advanced Scheduler Simulator with YAML</title>
-<style>
-  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #121212; color: #e0e0e0; padding: 15px; margin: 0; }
-  h2 { color: #61dafb; text-align: center; margin-top: 0; }
-  .layout { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K8s Advanced Scheduler Telemetry Simulator</title>
+  <meta name="description" content="An interactive, gamified simulation of the Kubernetes scheduling engine. Customize node capacities, resource requests, taints, and affinity rules to see real-time placement decisions.">
   
-  /* Control Panel */
-  .controls { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 20px; width: 100%; max-width: 400px; }
-  .controls h3 { margin-top: 0; color: #ffb300; border-bottom: 1px solid #444; padding-bottom: 10px; }
-  .setting-group { margin-bottom: 15px; background: #2a2a2a; padding: 10px; border-radius: 6px; }
-  .setting-group h4 { margin: 0 0 10px 0; color: #90caf9; font-size: 14px; }
-  select, input[type="checkbox"] { cursor: pointer; }
-  select { background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px; width: 100%; margin-bottom: 5px; }
-  label { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 5px; cursor: pointer; }
-  .btn-run { width: 100%; padding: 12px; background: #4CAF50; color: white; font-weight: bold; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; margin-top: 10px; }
-  .btn-run:hover { background: #45a049; transform: scale(1.02); }
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Design Tokens / Variables */
+    :root {
+      --bg-color: #060913;
+      --panel-bg: rgba(13, 20, 38, 0.7);
+      --card-bg: rgba(20, 30, 55, 0.6);
+      --border-color: rgba(0, 242, 254, 0.15);
+      --border-glow: rgba(0, 242, 254, 0.08);
+      
+      --cyan: #00f2fe;
+      --cyan-glow: rgba(0, 242, 254, 0.4);
+      --lime: #39ff14;
+      --lime-glow: rgba(57, 255, 20, 0.4);
+      --amber: #ffb300;
+      --amber-glow: rgba(255, 179, 0, 0.4);
+      --pink: #ff007f;
+      --pink-glow: rgba(255, 0, 127, 0.4);
+      --purple: #bf55ec;
+      --purple-glow: rgba(191, 85, 236, 0.4);
+      
+      --text-main: #f2f5fa;
+      --text-muted: #7d92b3;
+      --code-bg: #03050a;
+      
+      --transition-speed: 0.25s;
+    }
 
-  /* Cluster (Nodes) */
-  .cluster { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
-  .node { background: #222; border: 2px solid #555; border-radius: 8px; padding: 15px; position: relative; transition: 0.3s; cursor: pointer; }
-  .node:hover { border-color: #61dafb; }
-  .node h4 { margin: 0 0 10px 0; color: #fff; text-align: center; pointer-events: none; }
-  .badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 11px; margin: 2px; font-family: monospace; font-weight: bold; pointer-events: none; }
-  .zone-a { background: #1565c0; color: white; }
-  .zone-b { background: #00695c; color: white; }
-  .ssd { background: #2e7d32; }
-  .hdd { background: #5d4037; }
-  .taint { background: #c62828; }
-  .existing-pod { background: #616161; color: #fff; padding: 5px 10px; border-radius: 4px; margin-top: 10px; text-align: center; font-size: 12px; border: 1px dashed #aaa; pointer-events: none; }
-  
-  .node.active { border-color: #00e676; background: #1b3320; box-shadow: 0 0 15px rgba(0, 230, 118, 0.4); }
-  .node.error { border-color: #d32f2f; background: #3d1c1c; opacity: 0.6; }
-  .score-badge { position: absolute; top: 10px; right: 10px; background: #ffb300; color: #000; padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 12px; display: none; pointer-events: none; }
+    /* Base Setup & Cyber overlay */
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+    
+    body {
+      background-color: var(--bg-color);
+      background-image: 
+        linear-gradient(rgba(0, 242, 254, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 242, 254, 0.02) 1px, transparent 1px);
+      background-size: 30px 30px;
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
 
-  /* Pod and Logs */
-  #my-pod { background: #29b6f6; color: #000; padding: 10px; border-radius: 6px; font-weight: bold; text-align: center; margin-top: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); cursor: pointer; transition: transform 0.2s; }
-  #my-pod:hover { transform: scale(1.05); }
-  
-  /* Output Boxes */
-  .output-container { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
-  .output-box { flex: 1; min-width: 300px; background: #000; border-radius: 4px; padding: 15px; font-family: monospace; font-size: 13px; line-height: 1.6; overflow-x: auto; display: none; white-space: pre-wrap; }
-  #log-box { border-left: 4px solid #4CAF50; }
-  #yaml-box { border-left: 4px solid #ffb300; color: #a6e22e; }
-  
-  .log-hard { color: #ff5252; }
-  .log-soft { color: #69f0ae; }
-  .log-score { color: #ffd740; }
-  .yaml-key { color: #f92672; }
-  .yaml-string { color: #e6db74; }
-  .yaml-comment { color: #75715e; }
-</style>
+    /* Scanlines effect */
+    body::before {
+      content: " ";
+      display: block;
+      position: fixed;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), 
+                  linear-gradient(90deg, rgba(255, 0, 127, 0.02), rgba(57, 255, 20, 0.01), rgba(0, 242, 254, 0.02));
+      z-index: 999999;
+      background-size: 100% 6px, 6px 100%;
+      pointer-events: none;
+      opacity: 0.25;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Orbitron', sans-serif;
+      letter-spacing: 1px;
+      margin: 0;
+    }
+
+    /* Interactive elements styling */
+    a, button, input, select {
+      font-family: inherit;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--code-bg);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 242, 254, 0.2);
+      border-radius: 4px;
+      border: 1px solid rgba(0, 242, 254, 0.1);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 242, 254, 0.4);
+    }
+
+    /* Cyberpunk Header */
+    .cyber-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 15px;
+      margin-bottom: 25px;
+      background: rgba(13, 20, 38, 0.4);
+      padding: 15px 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px var(--border-glow);
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .k8s-logo {
+      font-size: 42px;
+      filter: drop-shadow(0 0 10px var(--cyan-glow));
+      animation: rotateLogo 20s linear infinite;
+    }
+
+    @keyframes rotateLogo {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .logo-text h1 {
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--cyan), #4facfe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
+    }
+
+    .logo-text .subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 3px;
+      margin-top: 2px;
+      font-weight: 600;
+    }
+
+    .header-stats {
+      display: flex;
+      gap: 20px;
+    }
+
+    .stat-box {
+      background: rgba(6, 9, 19, 0.8);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 8px;
+      min-width: 120px;
+      text-align: center;
+      box-shadow: inset 0 0 8px rgba(0, 242, 254, 0.05);
+    }
+
+    .stat-val {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--cyan);
+      text-shadow: 0 0 8px var(--cyan-glow);
+    }
+
+    .stat-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 800;
+      margin-top: 3px;
+      letter-spacing: 1px;
+    }
+
+    /* Layout Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 25px;
+      align-items: start;
+    }
+
+    /* Reusable Panels */
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: relative;
+    }
+
+    .panel-header {
+      border-bottom: 1px solid rgba(0, 242, 254, 0.2);
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-header h2 {
+      font-size: 16px;
+      color: var(--cyan);
+      text-shadow: 0 0 8px var(--cyan-glow);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Cyber Button */
+    .cyber-btn {
+      background: linear-gradient(135deg, rgba(0, 242, 254, 0.15) 0%, rgba(79, 172, 254, 0.05) 100%);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      width: 100%;
+      letter-spacing: 1px;
+      transition: all var(--transition-speed);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cyber-btn:hover:not(:disabled) {
+      background: var(--cyan);
+      color: #000;
+      box-shadow: 0 0 20px var(--cyan-glow);
+      transform: translateY(-1px);
+    }
+
+    .cyber-btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .cyber-btn:disabled {
+      border-color: var(--text-muted);
+      color: var(--text-muted);
+      cursor: not-allowed;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .cyber-btn.run-btn {
+      border-color: var(--lime);
+      color: var(--lime);
+      box-shadow: 0 0 10px rgba(57, 255, 20, 0.1);
+    }
+
+    .cyber-btn.run-btn:hover:not(:disabled) {
+      background: var(--lime);
+      color: #000;
+      box-shadow: 0 0 20px var(--lime-glow);
+    }
+
+    /* Utility UI components */
+    .settings-group {
+      background: rgba(6, 9, 19, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .settings-group h3 {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      border-left: 2px solid var(--cyan);
+      padding-left: 8px;
+    }
+
+    /* Slider Component styling */
+    .slider-container {
+      margin-bottom: 18px;
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .slider-label-row span:last-child {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--cyan);
+    }
+
+    .cyber-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      outline: none;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      cursor: pointer;
+    }
+
+    .cyber-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan-glow);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .cyber-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    /* Checkbox & Toggle styling */
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 400;
+      margin-bottom: 12px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .checkbox-container input {
+      display: none;
+    }
+
+    .custom-check {
+      width: 18px;
+      height: 18px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-speed);
+      box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+      flex-shrink: 0;
+    }
+
+    .checkbox-container input:checked + .custom-check {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan-glow);
+    }
+
+    .checkbox-container input:checked + .custom-check::after {
+      content: "✓";
+      color: #000;
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .checkbox-container:hover .custom-check {
+      border-color: var(--cyan);
+    }
+
+    .select-container {
+      margin-bottom: 15px;
+    }
+
+    .select-label {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .cyber-select {
+      width: 100%;
+      background: rgba(6, 9, 19, 0.8);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: border-color var(--transition-speed);
+    }
+
+    .cyber-select:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan-glow);
+    }
+
+    /* Sound and Auto Control Deck */
+    .control-deck {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+
+    .audio-toggle {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: rgba(6, 9, 19, 0.6);
+      color: var(--text-muted);
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+    }
+
+    .audio-toggle.active {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan-glow);
+    }
+
+    .audio-toggle:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .auto-mode-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: rgba(6, 9, 19, 0.6);
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: 8px;
+      height: 42px;
+    }
+
+    /* The Pod Deck (Visual waiting state) */
+    .pod-deck-box {
+      border: 1.5px dashed var(--cyan);
+      background: rgba(0, 242, 254, 0.03);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+      position: relative;
+      margin-top: 15px;
+      box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.02);
+      transition: all 0.3s ease;
+    }
+
+    .pod-deck-box.evaluating {
+      border-color: var(--amber);
+      background: rgba(255, 179, 0, 0.03);
+      animation: borderPulse 1s infinite alternate;
+    }
+
+    @keyframes borderPulse {
+      from { box-shadow: 0 0 5px rgba(255, 179, 0, 0.2); }
+      to { box-shadow: 0 0 15px rgba(255, 179, 0, 0.4); }
+    }
+
+    .source-pod-visual {
+      background: linear-gradient(135deg, var(--card-bg) 0%, rgba(13, 20, 38, 0.9) 100%);
+      border: 2px solid var(--cyan);
+      border-radius: 8px;
+      padding: 12px;
+      font-weight: 800;
+      color: var(--text-main);
+      display: inline-block;
+      width: 100%;
+      text-align: left;
+      box-shadow: 0 0 15px rgba(0, 242, 254, 0.2);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .source-pod-visual::before {
+      content: " ";
+      position: absolute;
+      top: 0; left: -100%;
+      width: 50%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+      transform: skewX(-25deg);
+      animation: lightGlance 3s infinite;
+    }
+
+    @keyframes lightGlance {
+      0% { left: -150%; }
+      30% { left: 150%; }
+      100% { left: 150%; }
+    }
+
+    .pod-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(0, 242, 254, 0.2);
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+
+    .pod-card-header .pod-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 13px;
+      color: var(--cyan);
+      text-shadow: 0 0 5px var(--cyan-glow);
+    }
+
+    .pod-card-header .pod-kind {
+      font-size: 9px;
+      background: rgba(0, 242, 254, 0.15);
+      color: var(--cyan);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .pod-resources-small {
+      display: flex;
+      gap: 15px;
+      font-size: 12px;
+      font-family: 'Orbitron', sans-serif;
+      color: var(--text-muted);
+    }
+
+    .pod-resources-small span strong {
+      color: var(--text-main);
+    }
+
+    /* Main Dashboard Right Area */
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    /* Cluster Nodes Grid Container */
+    .cluster-grid-container {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(0, 242, 254, 0.15);
+      padding-bottom: 12px;
+    }
+
+    .section-header h2 {
+      font-size: 16px;
+      color: var(--cyan);
+      text-shadow: 0 0 8px var(--cyan-glow);
+    }
+
+    .pending-queue-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      font-family: 'Orbitron', sans-serif;
+      color: var(--text-muted);
+      font-weight: 800;
+    }
+
+    .pending-slot {
+      width: 140px;
+      height: 38px;
+      border: 1px dashed var(--pink);
+      border-radius: 6px;
+      background: rgba(255, 0, 127, 0.03);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .pending-slot.targeting {
+      background: rgba(255, 0, 127, 0.15);
+      box-shadow: 0 0 15px var(--pink-glow);
+      border-style: solid;
+    }
+
+    /* The Nodes Grid Layout */
+    .cluster-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 20px;
+    }
+
+    /* Node Card details */
+    .node-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 15px;
+      position: relative;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .node-card:hover {
+      border-color: rgba(0, 242, 254, 0.4);
+      box-shadow: 0 0 15px rgba(0, 242, 254, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .node-card.selected {
+      border-color: var(--cyan);
+      box-shadow: 0 0 15px rgba(0, 242, 254, 0.2), inset 0 0 10px rgba(0, 242, 254, 0.05);
+    }
+
+    .node-card.scanning {
+      border-color: var(--amber);
+      box-shadow: 0 0 20px var(--amber-glow);
+      animation: nodeScan 0.5s infinite alternate;
+    }
+
+    @keyframes nodeScan {
+      from { border-color: rgba(255, 179, 0, 0.3); }
+      to { border-color: var(--amber); }
+    }
+
+    .node-card.filter-passed {
+      border-color: var(--lime);
+      box-shadow: 0 0 20px rgba(57, 255, 20, 0.15);
+    }
+
+    .node-card.filter-failed {
+      border-color: var(--pink);
+      box-shadow: 0 0 15px rgba(255, 0, 127, 0.1);
+      opacity: 0.6;
+    }
+
+    .node-card.winner-node {
+      border-color: var(--lime);
+      box-shadow: 0 0 25px var(--lime-glow);
+      animation: winnerPulse 1.5s infinite;
+    }
+
+    @keyframes winnerPulse {
+      0% { box-shadow: 0 0 15px var(--lime-glow); }
+      50% { box-shadow: 0 0 30px rgba(57, 255, 20, 0.6); }
+      100% { box-shadow: 0 0 15px var(--lime-glow); }
+    }
+
+    .node-card.scheduled-success {
+      animation: cardFlashSuccess 0.8s ease;
+    }
+
+    @keyframes cardFlashSuccess {
+      0% { background: var(--card-bg); }
+      50% { background: rgba(57, 255, 20, 0.15); }
+      100% { background: var(--card-bg); }
+    }
+
+    /* Node Header */
+    .node-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 8px;
+    }
+
+    .node-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .node-title-group h3 {
+      font-size: 14px;
+      color: var(--text-main);
+    }
+
+    .status-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .status-indicator.idle {
+      background: #4b5563;
+      box-shadow: 0 0 6px #4b5563;
+    }
+
+    .status-indicator.evaluating {
+      background: var(--amber);
+      box-shadow: 0 0 10px var(--amber);
+      animation: pulseIndicator 0.8s infinite alternate;
+    }
+
+    .status-indicator.success {
+      background: var(--lime);
+      box-shadow: 0 0 10px var(--lime);
+    }
+
+    .status-indicator.failed {
+      background: var(--pink);
+      box-shadow: 0 0 10px var(--pink);
+    }
+
+    @keyframes pulseIndicator {
+      from { opacity: 0.5; }
+      to { opacity: 1; }
+    }
+
+    .score-badge {
+      background: linear-gradient(135deg, var(--lime) 0%, #00b894 100%);
+      color: #000;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      box-shadow: 0 0 8px var(--lime-glow);
+    }
+
+    /* Interactive Metadata Buttons in Cards */
+    .node-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      background: rgba(6, 9, 19, 0.4);
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .meta-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .meta-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all var(--transition-speed);
+      text-transform: uppercase;
+    }
+
+    .meta-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Meta specific badges */
+    .meta-btn.zone-btn.zone-a { border-color: var(--cyan); color: var(--cyan); }
+    .meta-btn.zone-btn.zone-b { border-color: var(--purple); color: var(--purple); }
+    .meta-btn.zone-btn.zone-c { border-color: var(--amber); color: var(--amber); }
+
+    .meta-btn.disk-btn.ssd { border-color: var(--lime); color: var(--lime); }
+    .meta-btn.disk-btn.nvme { border-color: var(--cyan); color: var(--cyan); }
+    .meta-btn.disk-btn.hdd { border-color: #a0aec0; color: #a0aec0; }
+
+    .meta-btn.taint-btn.active {
+      border-color: var(--pink);
+      color: var(--pink);
+      background: rgba(255, 0, 127, 0.05);
+      box-shadow: 0 0 5px rgba(255, 0, 127, 0.2);
+    }
+
+    .pod-toggles {
+      display: flex;
+      gap: 4px;
+    }
+
+    .pod-btn {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 3px 0;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+    }
+
+    .pod-btn:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .pod-btn.active {
+      background: rgba(0, 242, 254, 0.08);
+      color: var(--cyan);
+      border-color: var(--cyan);
+      box-shadow: 0 0 5px rgba(0, 242, 254, 0.1);
+    }
+
+    .pod-btn.db-btn.active { border-color: var(--purple); color: var(--purple); background: rgba(191, 85, 236, 0.08); }
+    .pod-btn.web-btn.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0, 242, 254, 0.08); }
+
+    /* Resource Meter Bars */
+    .resource-meter {
+      margin-bottom: 10px;
+    }
+
+    .resource-meter:last-child {
+      margin-bottom: 0;
+    }
+
+    .meter-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: 'Orbitron', sans-serif;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .meter-bar-container {
+      height: 8px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+
+    .meter-bar-bg {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .meter-bar-fill {
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transition: width 0.3s ease, left 0.3s ease;
+    }
+
+    .meter-bar-fill.background {
+      background: #2c3e50; /* Base background load */
+      border-radius: 4px 0 0 4px;
+    }
+
+    .meter-bar-fill.request {
+      background: linear-gradient(90deg, var(--cyan), #00c6ff);
+      box-shadow: 0 0 8px var(--cyan);
+      animation: pulseRequest 1.5s infinite alternate;
+    }
+
+    .meter-bar-fill.overflow {
+      background: linear-gradient(90deg, var(--pink), #ff4b2b);
+      box-shadow: 0 0 8px var(--pink-glow);
+      animation: flashOverflow 0.6s infinite alternate;
+    }
+
+    @keyframes pulseRequest {
+      0% { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
+    
+    @keyframes flashOverflow {
+      0% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+
+    /* Custom Node Sliders */
+    .node-controls {
+      background: rgba(6, 9, 19, 0.3);
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.02);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider-group-mini {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .slider-group-mini label {
+      font-size: 9px;
+      color: var(--text-muted);
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .slider-group-mini label span {
+      color: var(--text-main);
+      font-family: monospace;
+    }
+
+    .mini-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .mini-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .mini-slider::-webkit-slider-thumb:hover {
+      background: var(--cyan);
+      box-shadow: 0 0 5px var(--cyan);
+    }
+
+    /* Landing Zone inside Card */
+    .landing-slot-container {
+      border-top: 1.5px dashed rgba(255, 255, 255, 0.08);
+      padding-top: 8px;
+    }
+
+    .landing-slot-label {
+      font-size: 9px;
+      color: var(--text-muted);
+      font-weight: 800;
+      font-family: 'Orbitron', sans-serif;
+      display: block;
+      margin-bottom: 5px;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+
+    .landing-slot {
+      height: 38px;
+      border: 1px dashed rgba(0, 242, 254, 0.15);
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .landing-slot.targeting {
+      background: rgba(0, 242, 254, 0.08);
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+      border-style: solid;
+    }
+
+    /* The scheduled Pod tokens */
+    .scheduled-pod-token {
+      width: 90%;
+      padding: 6px;
+      border-radius: 5px;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 800;
+      font-size: 10px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .scheduled-pod-token.success {
+      background: rgba(57, 255, 20, 0.1);
+      border: 1px solid var(--lime);
+      color: var(--lime);
+      box-shadow: 0 0 10px rgba(57, 255, 20, 0.15);
+    }
+
+    .scheduled-pod-token.pending {
+      background: rgba(255, 0, 127, 0.1);
+      border: 1px solid var(--pink);
+      color: var(--pink);
+      box-shadow: 0 0 10px rgba(255, 0, 127, 0.15);
+      animation: pulseError 1.5s infinite;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes pulseError {
+      0% { box-shadow: 0 0 5px rgba(255, 0, 127, 0.1); }
+      50% { box-shadow: 0 0 15px rgba(255, 0, 127, 0.4); }
+      100% { box-shadow: 0 0 5px rgba(255, 0, 127, 0.1); }
+    }
+
+    /* Animated Flight Pod token */
+    .flying-pod-token {
+      position: absolute;
+      background: linear-gradient(135deg, var(--cyan), #4facfe);
+      color: #000;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 800;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      box-shadow: 0 0 20px var(--cyan-glow);
+      z-index: 99999;
+      pointer-events: none;
+      border: 1px solid var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Console logs & Tab System */
+    .telemetry-panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-tabs {
+      display: flex;
+      background: rgba(6, 9, 19, 0.8);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-right: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 14px 20px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    .tab-btn:hover {
+      color: var(--cyan);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .tab-btn.active {
+      color: var(--cyan);
+      background: rgba(0, 242, 254, 0.05);
+      border-bottom: 2px solid var(--cyan);
+      box-shadow: inset 0 -5px 15px rgba(0, 242, 254, 0.05);
+    }
+
+    .tab-content {
+      padding: 15px;
+      display: none;
+      min-height: 250px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .console-box {
+      width: 100%;
+      height: 280px;
+      background: var(--code-bg);
+      border-radius: 8px;
+      padding: 15px;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Log styling */
+    .log-info { color: #5ad3ff; }
+    .log-success { color: var(--lime); }
+    .log-warn { color: var(--amber); }
+    .log-error { color: var(--pink); }
+    .log-score { color: #f8c291; }
+    .log-debug { color: #a4b0be; }
+
+    /* YAML Highlights */
+    .yaml-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 10px;
+    }
+
+    .yaml-subtabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .subtab-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: 'Orbitron', sans-serif;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+    }
+
+    .subtab-btn:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .subtab-btn.active {
+      background: rgba(0, 242, 254, 0.12);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 6px var(--cyan-glow);
+    }
+
+    .cyber-btn.mini-btn {
+      padding: 6px 12px;
+      font-size: 10px;
+      width: auto;
+    }
+
+    .yaml-box {
+      color: #a6e22e;
+    }
+    
+    .yaml-key { color: var(--pink); }
+    .yaml-string { color: #e6db74; }
+    .yaml-number { color: #ae81ff; }
+    .yaml-keyword { color: var(--cyan); }
+    .yaml-comment { color: #75715e; font-style: italic; }
+
+    /* Notification Alert Toast */
+    .toast {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      background: rgba(6, 9, 19, 0.9);
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 15px var(--cyan-glow);
+      padding: 12px 24px;
+      border-radius: 8px;
+      color: var(--cyan);
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      z-index: 999999;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 990px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
 
-  <h2>☸️ K8s Advanced Scheduler: Affinity & Scoring</h2>
-
-  <div class="layout">
-    <div class="controls">
-      <h3>⚙️ Pod Settings</h3>
-      
-      <div class="setting-group">
-        <h4>🛑 Hard Limits (Filtering)</h4>
-        <select id="req-zone" onchange="showPodYaml()">
-          <option value="any">NodeAffinity: Any Zone</option>
-          <option value="zone-a">NodeAffinity: Require Zone-A</option>
-          <option value="zone-b">NodeAffinity: Require Zone-B</option>
-        </select>
-        <label><input type="checkbox" id="anti-db" onchange="showPodYaml()"> Anti-Affinity: Avoid [DB] Pods 🗄️</label>
-        <label><input type="checkbox" id="tol-gpu" onchange="showPodYaml()"> Toleration: Allow GPU Taint 🎫</label>
-      </div>
-
-      <div class="setting-group">
-        <h4>☁️ Soft Preferences (Scoring)</h4>
-        <label><input type="checkbox" id="pref-ssd" onchange="showPodYaml()"> NodeAffinity: Prefer SSD (+50 pts) ⚡</label>
-        <label><input type="checkbox" id="pref-web" onchange="showPodYaml()"> PodAffinity: Near [Web] (+30 pts) 🌐</label>
-      </div>
-
-      <button class="btn-run" onclick="schedule()">🚀 Run Scheduler</button>
-      <div id="my-pod" onclick="showPodYaml()">📦 My Pod (Click for YAML)</div>
-    </div>
-
-    <div class="cluster" id="cluster">
-      <div class="node" id="node-1" data-zone="zone-a" data-disk="ssd" data-taint="none" data-pods="" onclick="showNodeYaml(1)">
-        <div class="score-badge"></div>
-        <h4>🖥️ Node 1</h4>
-        <div><span class="badge zone-a">🌍 zone-a</span> <span class="badge ssd">💾 ssd</span></div>
-        <div style="margin-top: 10px; font-size: 12px; color: #aaa;">🟢 Taints: None</div>
-      </div>
-      
-      <div class="node" id="node-2" data-zone="zone-a" data-disk="hdd" data-taint="gpu" data-pods="db" onclick="showNodeYaml(2)">
-        <div class="score-badge"></div>
-        <h4>🖥️ Node 2</h4>
-        <div><span class="badge zone-a">🌍 zone-a</span> <span class="badge hdd">💽 hdd</span></div>
-        <div style="margin-top: 10px;"><span class="badge taint">🛑 gpu:NoSchedule</span></div>
-        <div class="existing-pod">🗄️ Pod: [DB]</div>
-      </div>
-
-      <div class="node" id="node-3" data-zone="zone-b" data-disk="ssd" data-taint="none" data-pods="web" onclick="showNodeYaml(3)">
-        <div class="score-badge"></div>
-        <h4>🖥️ Node 3</h4>
-        <div><span class="badge zone-b">🌍 zone-b</span> <span class="badge ssd">💾 ssd</span></div>
-        <div style="margin-top: 10px; font-size: 12px; color: #aaa;">🟢 Taints: None</div>
-        <div class="existing-pod">🌐 Pod: [Web]</div>
-      </div>
-
-      <div class="node" id="node-4" data-zone="zone-b" data-disk="hdd" data-taint="none" data-pods="db,web" onclick="showNodeYaml(4)">
-        <div class="score-badge"></div>
-        <h4>🖥️ Node 4</h4>
-        <div><span class="badge zone-b">🌍 zone-b</span> <span class="badge hdd">💽 hdd</span></div>
-        <div style="margin-top: 10px; font-size: 12px; color: #aaa;">🟢 Taints: None</div>
-        <div class="existing-pod">🗄️ [DB] &nbsp; 🌐 [Web]</div>
+  <!-- Title block -->
+  <header class="cyber-header">
+    <div class="logo-area">
+      <div class="k8s-logo">☸️</div>
+      <div class="logo-text">
+        <h1 id="main-heading">K8S ADVANCED SCHEDULER</h1>
+        <p class="subtitle">AUTOMATED PLACEMENT TELEMETRY & SIMULATOR</p>
       </div>
     </div>
+    <div class="header-stats">
+      <div class="stat-box">
+        <div class="stat-val" id="stat-nodes">4 / 4</div>
+        <div class="stat-lbl">NODES READY</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-scheduled">0</div>
+        <div class="stat-lbl">PODS RUNNING</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-status">IDLE</div>
+        <div class="stat-lbl">ENGINE STATE</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main grid layout -->
+  <div class="dashboard-grid">
+    
+    <!-- Left panel (Configurator) -->
+    <aside class="panel configurator-panel">
+      <div class="panel-header">
+        <h2>⚙️ POD SPECIFICATION</h2>
+      </div>
+
+      <!-- Sound & Speed control deck -->
+      <div class="control-deck">
+        <button class="audio-toggle active" id="audio-toggle-btn" onclick="toggleAudio()" title="Toggle Audio Effects">🔊</button>
+        
+        <div class="auto-mode-wrapper">
+          <label class="checkbox-container" style="margin-bottom: 0;">
+            <input type="checkbox" id="auto-schedule-opt" checked onchange="handleAutoScheduleToggle()">
+            <div class="custom-check"></div>
+            <span>Auto-Schedule</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Pod Profile Inputs -->
+      <div class="settings-group">
+        <h3>📦 Pod Identity</h3>
+        <div class="slider-container" style="margin-bottom: 0;">
+          <div class="slider-label-row">
+            <span>Pod Name</span>
+          </div>
+          <input type="text" id="pod-name" value="my-smart-pod" style="width:100%; background:rgba(6,9,19,0.8); border:1px solid var(--border-color); color:var(--text-main); padding:8px 12px; border-radius:6px; outline:none; font-family:monospace; font-size:13px;" oninput="handleParamChange()">
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <h3>⚡ Resource Requests</h3>
+        
+        <div class="slider-container">
+          <div class="slider-label-row">
+            <span>CPU Request</span>
+            <span id="pod-cpu-val">2.0 Cores</span>
+          </div>
+          <input type="range" class="cyber-slider" id="pod-cpu-req" min="0.5" max="8" step="0.5" value="2" oninput="handleParamChange()">
+        </div>
+
+        <div class="slider-container" style="margin-bottom: 0;">
+          <div class="slider-label-row">
+            <span>Memory Request</span>
+            <span id="pod-ram-val">4.0 GB</span>
+          </div>
+          <input type="range" class="cyber-slider" id="pod-ram-req" min="0.5" max="16" step="0.5" value="4" oninput="handleParamChange()">
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <h3>🛑 Filtering (Predicates)</h3>
+        
+        <div class="select-container">
+          <label class="select-label" for="pod-node-affinity">Node Affinity (Zone Requirement)</label>
+          <select class="cyber-select" id="pod-node-affinity" onchange="handleParamChange()">
+            <option value="any">No Hard Zone Affinity (Any Zone)</option>
+            <option value="zone-a">Required Zone: zone-a</option>
+            <option value="zone-b">Required Zone: zone-b</option>
+            <option value="zone-c">Required Zone: zone-c</option>
+          </select>
+        </div>
+
+        <label class="checkbox-container">
+          <input type="checkbox" id="pod-anti-db" onchange="handleParamChange()">
+          <div class="custom-check"></div>
+          <span>Anti-Affinity: Avoid [DB] Pods 🗄️</span>
+        </label>
+
+        <label class="checkbox-container" style="margin-bottom: 0;">
+          <input type="checkbox" id="pod-tolerate-gpu" onchange="handleParamChange()">
+          <div class="custom-check"></div>
+          <span>Toleration: Allow GPU Taint 🎫</span>
+        </label>
+      </div>
+
+      <div class="settings-group">
+        <h3>☁️ Scoring (Priorities)</h3>
+        
+        <label class="checkbox-container">
+          <input type="checkbox" id="pod-pref-ssd" checked onchange="handleParamChange()">
+          <div class="custom-check"></div>
+          <span>Prefer SSD Nodes (+50 pts) ⚡</span>
+        </label>
+
+        <label class="checkbox-container">
+          <input type="checkbox" id="pod-pref-nvme" checked onchange="handleParamChange()">
+          <div class="custom-check"></div>
+          <span>Prefer NVMe Nodes (+70 pts) 🚀</span>
+        </label>
+
+        <label class="checkbox-container">
+          <input type="checkbox" id="pod-pref-web" onchange="handleParamChange()">
+          <div class="custom-check"></div>
+          <span>PodAffinity: Near [Web] (+30 pts) 🌐</span>
+        </label>
+
+        <label class="checkbox-container" style="margin-bottom: 0;">
+          <input type="checkbox" id="pod-balance-resources" checked onchange="handleParamChange()">
+          <div class="custom-check"></div>
+          <span>Balanced Allocation Score (+50 pts) ⚖️</span>
+        </label>
+      </div>
+
+      <!-- Trigger action block -->
+      <button class="cyber-btn run-btn" id="run-scheduler-btn" onclick="triggerManualSchedule()" style="margin-top: 5px;">🚀 RUN SCHEDULER</button>
+      
+      <!-- Visual Pod Waiting Deck -->
+      <div class="pod-deck-box" id="pod-deck-container">
+        <div class="source-pod-visual" id="source-pod-visual" onclick="showPodYamlFromDeck()">
+          <div class="pod-card-header">
+            <span class="pod-name" id="deck-pod-name">my-smart-pod</span>
+            <span class="pod-kind">Pod</span>
+          </div>
+          <div class="pod-resources-small">
+            <span>CPU: <strong id="deck-pod-cpu">2.0</strong></span>
+            <span>Mem: <strong id="deck-pod-ram">4.0G</strong></span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Area: Topology, Logs, YAMLs -->
+    <main class="main-content">
+      
+      <!-- Topology cluster -->
+      <section class="cluster-grid-container">
+        <div class="section-header">
+          <h2>🖥️ ACTIVE CLUSTER TOPOLOGY</h2>
+          <div class="pending-queue-wrapper">
+            <span>PENDING ZONE:</span>
+            <div id="pending-slot" class="pending-slot" title="If pod cannot be scheduled, it goes here."></div>
+          </div>
+        </div>
+        
+        <div class="cluster-grid" id="cluster-grid-view">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+      <!-- Logs/YAML panel -->
+      <section class="telemetry-panel">
+        <div class="panel-tabs">
+          <button class="tab-btn active" id="tab-btn-logs" onclick="switchTab('logs')">📟 KUBE-SCHEDULER LOGS</button>
+          <button class="tab-btn" id="tab-btn-yaml" onclick="switchTab('yaml')">📄 YAML MANIFESTS</button>
+        </div>
+        
+        <!-- Logs console -->
+        <div id="logs-tab-content" class="tab-content active">
+          <div class="console-box" id="log-box"></div>
+        </div>
+        
+        <!-- YAML editor -->
+        <div id="yaml-tab-content" class="tab-content">
+          <div class="yaml-controls">
+            <div class="yaml-subtabs">
+              <button class="subtab-btn active" id="subtab-btn-pod" onclick="switchYamlSubtab('pod')">Pod Spec</button>
+              <button class="subtab-btn" id="subtab-btn-node" onclick="switchYamlSubtab('node')">Selected Node</button>
+              <button class="subtab-btn" id="subtab-btn-scheduler" onclick="switchYamlSubtab('scheduler')">Scheduler Config</button>
+            </div>
+            <button class="cyber-btn mini-btn" onclick="copyYamlText()">📋 COPY MANIFEST</button>
+          </div>
+          <pre class="console-box yaml-box" id="yaml-box-content"></pre>
+        </div>
+      </section>
+      
+    </main>
+
   </div>
 
-  <div class="output-container">
-    <div id="log-box" class="output-box"></div>
-    <div id="yaml-box" class="output-box"></div>
-  </div>
+  <!-- Notification Toast -->
+  <div class="toast" id="toast-notify">MANIFEST COPIED TO CLIPBOARD</div>
 
+  <!-- Script logic -->
   <script>
-    // YAML Syntax Highlighting
-    function highlightYaml(yamlText) {
-      return yamlText
-        .replace(/(^#.*$)/gm, '<span class="yaml-comment">$1</span>')
-        .replace(/^([\s-]*)([\w.-]+):/gm, '$1<span class="yaml-key">$2</span>:')
-        .replace(/:\s*(true|false|NoSchedule|Exists|In)\b/g, ': <span style="color:#ae81ff">$1</span>')
-        .replace(/:\s*([0-9]+)\b/g, ': <span style="color:#ae81ff">$1</span>');
-    }
-
-    // Generate Node YAML
-    function showNodeYaml(nodeId) {
-      const nodeEl = document.getElementById(`node-${nodeId}`);
-      const zone = nodeEl.dataset.zone;
-      const disk = nodeEl.dataset.disk;
-      const taint = nodeEl.dataset.taint;
-
-      let yaml = `# 🖥️ Manifest for Node ${nodeId}\n`;
-      yaml += `apiVersion: v1\nkind: Node\nmetadata:\n  name: node-${nodeId}\n  labels:\n    topology.kubernetes.io/zone: ${zone}\n    disk: ${disk}\n`;
-      
-      if (taint === 'gpu') {
-        yaml += `spec:\n  taints:\n  - key: gpu\n    value: "true"\n    effect: NoSchedule\n`;
-      }
-      
-      const yamlBox = document.getElementById('yaml-box');
-      yamlBox.innerHTML = highlightYaml(yaml);
-      yamlBox.style.display = 'block';
-    }
-
-    // Generate Pod YAML
-    function showPodYaml() {
-      const reqZone = document.getElementById('req-zone').value;
-      const avoidDb = document.getElementById('anti-db').checked;
-      const tolGpu = document.getElementById('tol-gpu').checked;
-      const prefSsd = document.getElementById('pref-ssd').checked;
-      const prefWeb = document.getElementById('pref-web').checked;
-
-      let yaml = `# 📦 Manifest for your Pod\n`;
-      yaml += `apiVersion: v1\nkind: Pod\nmetadata:\n  name: my-smart-pod\nspec:\n  containers:\n  - name: app\n    image: nginx:latest\n`;
-      
-      let hasAffinity = (reqZone !== 'any' || prefSsd || prefWeb || avoidDb);
-      if (hasAffinity) yaml += `  affinity:\n`;
-
-      // Node Affinity
-      if (reqZone !== 'any' || prefSsd) {
-        yaml += `    nodeAffinity:\n`;
-        if (reqZone !== 'any') {
-          yaml += `      requiredDuringSchedulingIgnoredDuringExecution:\n        nodeSelectorTerms:\n        - matchExpressions:\n          - key: topology.kubernetes.io/zone\n            operator: In\n            values:\n            - ${reqZone}\n`;
+    // Procedural Sound Effects Engine (Web Audio API)
+    const synth = {
+      ctx: null,
+      enabled: true,
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         }
-        if (prefSsd) {
-          yaml += `      preferredDuringSchedulingIgnoredDuringExecution:\n      - weight: 50\n        preference:\n          matchExpressions:\n          - key: disk\n            operator: In\n            values:\n            - ssd\n`;
+      },
+      playTone(freq, type, duration, volume, delay = 0) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          
+          osc.type = type || 'sine';
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + delay);
+          
+          gain.gain.setValueAtTime(volume || 0.1, this.ctx.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + delay + duration);
+          
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          
+          osc.start(this.ctx.currentTime + delay);
+          osc.stop(this.ctx.currentTime + delay + duration);
+        } catch (e) {
+          console.warn("Audio Context blocked or unsupported:", e);
         }
+      },
+      click() {
+        this.playTone(800, 'sine', 0.05, 0.08);
+      },
+      tick() {
+        this.playTone(1000, 'sine', 0.02, 0.05);
+      },
+      success() {
+        this.playTone(392, 'triangle', 0.08, 0.12, 0);      // G4
+        this.playTone(523.25, 'triangle', 0.08, 0.12, 0.06);  // C5
+        this.playTone(659.25, 'triangle', 0.08, 0.12, 0.12);  // E5
+        this.playTone(783.99, 'sine', 0.25, 0.15, 0.18);      // G5
+      },
+      fail() {
+        this.playTone(160, 'sawtooth', 0.15, 0.15, 0);
+        this.playTone(110, 'sawtooth', 0.35, 0.2, 0.08);
+      },
+      swoosh() {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.45);
+          
+          gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.45);
+          
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.45);
+        } catch(e){}
       }
+    };
 
-      // Pod Affinity
-      if (prefWeb) {
-        yaml += `    podAffinity:\n      preferredDuringSchedulingIgnoredDuringExecution:\n      - weight: 30\n        podAffinityTerm:\n          labelSelector:\n            matchLabels:\n              app: web\n          topologyKey: kubernetes.io/hostname\n`;
+    function toggleAudio() {
+      synth.enabled = !synth.enabled;
+      const btn = document.getElementById('audio-toggle-btn');
+      if (synth.enabled) {
+        btn.classList.add('active');
+        btn.innerText = '🔊';
+        synth.click();
+      } else {
+        btn.classList.remove('active');
+        btn.innerText = '🔇';
       }
-
-      // Pod Anti-Affinity
-      if (avoidDb) {
-        yaml += `    podAntiAffinity:\n      requiredDuringSchedulingIgnoredDuringExecution:\n      - labelSelector:\n          matchLabels:\n            app: db\n        topologyKey: kubernetes.io/hostname\n`;
-      }
-
-      // Tolerations
-      if (tolGpu) {
-        yaml += `  tolerations:\n  - key: "gpu"\n    operator: "Exists"\n    effect: "NoSchedule"\n`;
-      }
-
-      const yamlBox = document.getElementById('yaml-box');
-      yamlBox.innerHTML = highlightYaml(yaml);
-      yamlBox.style.display = 'block';
     }
 
-    // Scheduler Logic
-    function schedule() {
-      const reqZone = document.getElementById('req-zone').value;
-      const avoidDb = document.getElementById('anti-db').checked;
-      const tolGpu = document.getElementById('tol-gpu').checked;
-      const prefSsd = document.getElementById('pref-ssd').checked;
-      const prefWeb = document.getElementById('pref-web').checked;
+    // Dynamic state management
+    const nodes = [
+      {
+        id: 1,
+        name: "node-1",
+        zone: "zone-a",
+        disk: "ssd",
+        taint: "none",
+        pods: [],
+        cpuCap: 8.0,
+        ramCap: 16.0,
+        loadPercent: 20
+      },
+      {
+        id: 2,
+        name: "node-2",
+        zone: "zone-a",
+        disk: "hdd",
+        taint: "gpu",
+        pods: ["db"],
+        cpuCap: 8.0,
+        ramCap: 16.0,
+        loadPercent: 40
+      },
+      {
+        id: 3,
+        name: "node-3",
+        zone: "zone-b",
+        disk: "ssd",
+        taint: "none",
+        pods: ["web"],
+        cpuCap: 8.0,
+        ramCap: 16.0,
+        loadPercent: 25
+      },
+      {
+        id: 4,
+        name: "node-4",
+        zone: "zone-b",
+        disk: "nvme",
+        taint: "none",
+        pods: ["db", "web"],
+        cpuCap: 16.0,
+        ramCap: 32.0,
+        loadPercent: 45
+      }
+    ];
 
-      let log = "<b>🔍 kube-scheduler log:</b>\n==========================\n";
-      let candidates = [];
-      let maxScore = -1;
-      let winnerNode = null;
+    let selectedNodeId = 1;
+    let isScheduling = false;
+    let autoScheduleDebounceTimer = null;
+    let currentYamlSubtab = 'pod';
+    let currentTab = 'logs';
 
-      document.querySelectorAll('.node').forEach(n => {
-        n.classList.remove('active', 'error');
-        n.querySelector('.score-badge').style.display = 'none';
+    // UI Initialisation
+    window.addEventListener('DOMContentLoaded', () => {
+      initClusterUI();
+      handleParamChange(); // run initial scheduler evaluation
+    });
+
+    function initClusterUI() {
+      const grid = document.getElementById('cluster-grid-view');
+      grid.innerHTML = '';
+      nodes.forEach(n => {
+        grid.insertAdjacentHTML('beforeend', renderNodeHTML(n));
+      });
+      // Set initial selected visual class
+      document.getElementById(`node-${selectedNodeId}`).classList.add('selected');
+    }
+
+    function renderNodeHTML(node) {
+      const bgRam = (node.ramCap * (node.loadPercent / 100)).toFixed(1);
+      const bgCpu = (node.cpuCap * (node.loadPercent / 100)).toFixed(1);
+      
+      return `
+        <div class="node-card" id="node-${node.id}" onclick="selectNode(${node.id})">
+          <div class="node-header">
+            <div class="node-title-group">
+              <span class="status-indicator idle" id="node-${node.id}-status"></span>
+              <h3>${node.name.toUpperCase()}</h3>
+            </div>
+            <span class="score-badge" id="node-${node.id}-score-badge" style="display:none;">Score: 0</span>
+          </div>
+          
+          <!-- Metadata click-to-cycle configurations -->
+          <div class="node-meta-grid" onclick="synth.click()">
+            <div class="meta-item">
+              <span class="meta-label">Zone</span>
+              <button class="meta-btn zone-btn ${node.zone}" onclick="cycleZone(${node.id}, event)" id="node-${node.id}-zone">${node.zone}</button>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Disk</span>
+              <button class="meta-btn disk-btn ${node.disk}" onclick="cycleDisk(${node.id}, event)" id="node-${node.id}-disk">${node.disk}</button>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Taints</span>
+              <button class="meta-btn taint-btn ${node.taint !== 'none' ? 'active' : ''}" onclick="toggleTaint(${node.id}, event)" id="node-${node.id}-taint">
+                ${node.taint === 'gpu' ? 'gpu:NoSchedule' : 'none'}
+              </button>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Existing Workloads</span>
+              <div class="pod-toggles">
+                <button class="pod-btn db-btn ${node.pods.includes('db') ? 'active' : ''}" onclick="toggleExistingPod(${node.id}, 'db', event)" id="node-${node.id}-pod-db">DB</button>
+                <button class="pod-btn web-btn ${node.pods.includes('web') ? 'active' : ''}" onclick="toggleExistingPod(${node.id}, 'web', event)" id="node-${node.id}-pod-web">Web</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Telemetry resource bars -->
+          <div class="node-resources">
+            <div class="resource-meter">
+              <div class="meter-label">
+                <span>CPU CORES</span>
+                <span id="node-${node.id}-cpu-text">${bgCpu} / ${node.cpuCap} Cores</span>
+              </div>
+              <div class="meter-bar-container">
+                <div class="meter-bar-bg">
+                  <div class="meter-bar-fill background" id="node-${node.id}-cpu-bar-bg" style="width: ${node.loadPercent}%;"></div>
+                  <div class="meter-bar-fill request" id="node-${node.id}-cpu-bar-req" style="width: 0%; left: ${node.loadPercent}%;"></div>
+                  <div class="meter-bar-fill overflow" id="node-${node.id}-cpu-bar-over" style="width: 0%; left: ${node.loadPercent}%;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="resource-meter">
+              <div class="meter-label">
+                <span>RAM MEMORY</span>
+                <span id="node-${node.id}-ram-text">${bgRam} / ${node.ramCap} GB</span>
+              </div>
+              <div class="meter-bar-container">
+                <div class="meter-bar-bg">
+                  <div class="meter-bar-fill background" id="node-${node.id}-ram-bar-bg" style="width: ${node.loadPercent}%;"></div>
+                  <div class="meter-bar-fill request" id="node-${node.id}-ram-bar-req" style="width: 0%; left: ${node.loadPercent}%;"></div>
+                  <div class="meter-bar-fill overflow" id="node-${node.id}-ram-bar-over" style="width: 0%; left: ${node.loadPercent}%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Controls for Capacity sliders -->
+          <div class="node-controls" onclick="event.stopPropagation()">
+            <div class="slider-group-mini">
+              <label>Max CPU: <span id="node-${node.id}-cpu-cap-val">${node.cpuCap} Cores</span></label>
+              <input type="range" class="mini-slider" min="2" max="16" step="2" value="${node.cpuCap}" oninput="adjustNodeResource(${node.id}, 'cpu', this.value); synth.click();">
+            </div>
+            <div class="slider-group-mini">
+              <label>Max RAM: <span id="node-${node.id}-ram-cap-val">${node.ramCap} GB</span></label>
+              <input type="range" class="mini-slider" min="4" max="32" step="4" value="${node.ramCap}" oninput="adjustNodeResource(${node.id}, 'ram', this.value); synth.click();">
+            </div>
+            <div class="slider-group-mini">
+              <label>Background Load: <span id="node-${node.id}-load-val">${node.loadPercent}%</span></label>
+              <input type="range" class="mini-slider" min="0" max="100" step="5" value="${node.loadPercent}" oninput="adjustNodeResource(${node.id}, 'load', this.value); synth.click();">
+            </div>
+          </div>
+          
+          <!-- Pod Landing slot -->
+          <div class="landing-slot-container">
+            <span class="landing-slot-label">SCHEDULER LANDING ZONE</span>
+            <div class="landing-slot" id="node-${node.id}-landing-slot"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Toggle manual vs auto scheduling Mode
+    function handleAutoScheduleToggle() {
+      const isAuto = document.getElementById('auto-schedule-opt').checked;
+      const runBtn = document.getElementById('run-scheduler-btn');
+      runBtn.disabled = isAuto;
+      synth.click();
+      handleParamChange();
+    }
+
+    // Triggered when dynamic node capacity gets adjusted
+    function adjustNodeResource(nodeId, type, val) {
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      if (type === 'cpu') {
+        node.cpuCap = parseFloat(val);
+        document.getElementById(`node-${nodeId}-cpu-cap-val`).innerText = `${node.cpuCap} Cores`;
+      } else if (type === 'ram') {
+        node.ramCap = parseFloat(val);
+        document.getElementById(`node-${nodeId}-ram-cap-val`).innerText = `${node.ramCap} GB`;
+      } else if (type === 'load') {
+        node.loadPercent = parseInt(val);
+        document.getElementById(`node-${nodeId}-load-val`).innerText = `${node.loadPercent}%`;
+      }
+
+      // Update Node specific resource labels
+      const bgRam = (node.ramCap * (node.loadPercent / 100)).toFixed(1);
+      const bgCpu = (node.cpuCap * (node.loadPercent / 100)).toFixed(1);
+      document.getElementById(`node-${nodeId}-cpu-text`).innerText = `${bgCpu} / ${node.cpuCap} Cores`;
+      document.getElementById(`node-${nodeId}-ram-text`).innerText = `${bgRam} / ${node.ramCap} GB`;
+      
+      // Update background bar widths
+      document.getElementById(`node-${nodeId}-cpu-bar-bg`).style.width = `${node.loadPercent}%`;
+      document.getElementById(`node-${nodeId}-ram-bar-bg`).style.width = `${node.loadPercent}%`;
+      
+      handleParamChange();
+    }
+
+    // Interactive Node Config changes (cycling attributes)
+    function cycleZone(nodeId, e) {
+      e.stopPropagation();
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      
+      const zones = ['zone-a', 'zone-b', 'zone-c'];
+      let nextIndex = (zones.indexOf(node.zone) + 1) % zones.length;
+      node.zone = zones[nextIndex];
+      
+      // update classes and values
+      const btn = document.getElementById(`node-${nodeId}-zone`);
+      btn.className = `meta-btn zone-btn ${node.zone}`;
+      btn.innerText = node.zone;
+      
+      handleParamChange();
+    }
+
+    function cycleDisk(nodeId, e) {
+      e.stopPropagation();
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      const disks = ['ssd', 'nvme', 'hdd'];
+      let nextIndex = (disks.indexOf(node.disk) + 1) % disks.length;
+      node.disk = disks[nextIndex];
+
+      const btn = document.getElementById(`node-${nodeId}-disk`);
+      btn.className = `meta-btn disk-btn ${node.disk}`;
+      btn.innerText = node.disk;
+
+      handleParamChange();
+    }
+
+    function toggleTaint(nodeId, e) {
+      e.stopPropagation();
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      node.taint = node.taint === 'gpu' ? 'none' : 'gpu';
+      
+      const btn = document.getElementById(`node-${nodeId}-taint`);
+      if (node.taint === 'gpu') {
+        btn.classList.add('active');
+        btn.innerText = 'gpu:NoSchedule';
+      } else {
+        btn.classList.remove('active');
+        btn.innerText = 'none';
+      }
+
+      handleParamChange();
+    }
+
+    function toggleExistingPod(nodeId, podType, e) {
+      e.stopPropagation();
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      const hasPod = node.pods.includes(podType);
+      if (hasPod) {
+        node.pods = node.pods.filter(p => p !== podType);
+        document.getElementById(`node-${nodeId}-pod-${podType}`).classList.remove('active');
+      } else {
+        node.pods.push(podType);
+        document.getElementById(`node-${nodeId}-pod-${podType}`).classList.add('active');
+      }
+
+      handleParamChange();
+    }
+
+    // Selects a node to view its YAML specification
+    function selectNode(nodeId) {
+      selectedNodeId = nodeId;
+      document.querySelectorAll('.node-card').forEach(card => card.classList.remove('selected'));
+      document.getElementById(`node-${nodeId}`).classList.add('selected');
+      
+      // play click sound
+      synth.click();
+      
+      // Update YAML UI
+      updateYamlView();
+    }
+
+    // Triggers scheduling when settings are changed (with optional debounce for auto-schedule)
+    function handleParamChange() {
+      // Sync deck visualization
+      const pName = document.getElementById('pod-name').value || 'my-smart-pod';
+      const pCpu = parseFloat(document.getElementById('pod-cpu-req').value);
+      const pRam = parseFloat(document.getElementById('pod-ram-req').value);
+      
+      document.getElementById('deck-pod-name').innerText = pName;
+      document.getElementById('deck-pod-cpu').innerText = pCpu.toFixed(1);
+      document.getElementById('deck-pod-ram').innerText = pRam.toFixed(1) + 'G';
+      
+      document.getElementById('pod-cpu-val').innerText = `${pCpu.toFixed(1)} Cores`;
+      document.getElementById('pod-ram-val').innerText = `${pRam.toFixed(1)} GB`;
+
+      // Update potential requests overlays on node resource bars
+      nodes.forEach(node => {
+        const cpuReqPct = (pCpu / node.cpuCap) * 100;
+        const cpuTotal = node.loadPercent + cpuReqPct;
+        const cpuReqEl = document.getElementById(`node-${node.id}-cpu-bar-req`);
+        const cpuOverEl = document.getElementById(`node-${node.id}-cpu-bar-over`);
+        
+        if (cpuTotal > 100) {
+          cpuReqEl.style.width = '0%';
+          cpuOverEl.style.width = `${Math.min(cpuReqPct, 100 - node.loadPercent)}%`;
+          cpuOverEl.style.left = `${node.loadPercent}%`;
+        } else {
+          cpuOverEl.style.width = '0%';
+          cpuReqEl.style.width = `${cpuReqPct}%`;
+          cpuReqEl.style.left = `${node.loadPercent}%`;
+        }
+
+        const ramReqPct = (pRam / node.ramCap) * 100;
+        const ramTotal = node.loadPercent + ramReqPct;
+        const ramReqEl = document.getElementById(`node-${node.id}-ram-bar-req`);
+        const ramOverEl = document.getElementById(`node-${node.id}-ram-bar-over`);
+
+        if (ramTotal > 100) {
+          ramReqEl.style.width = '0%';
+          ramOverEl.style.width = `${Math.min(ramReqPct, 100 - node.loadPercent)}%`;
+          ramOverEl.style.left = `${node.loadPercent}%`;
+        } else {
+          ramOverEl.style.width = '0%';
+          ramReqEl.style.width = `${ramReqPct}%`;
+          ramReqEl.style.left = `${node.loadPercent}%`;
+        }
       });
 
-      // Filters
-      for (let i = 1; i <= 4; i++) {
-        let nodeEl = document.getElementById(`node-${i}`);
-        let zone = nodeEl.dataset.zone;
-        let taint = nodeEl.dataset.taint;
-        let pods = nodeEl.dataset.pods.split(',');
-        let passed = true; let reasons = [];
+      updateYamlView();
 
-        if (reqZone !== 'any' && zone !== reqZone) { passed = false; reasons.push(`Wrong zone (${zone})`); }
-        if (taint === 'gpu' && !tolGpu) { passed = false; reasons.push(`Blocked by GPU Taint`); }
-        if (avoidDb && pods.includes('db')) { passed = false; reasons.push(`Anti-Affinity [DB] triggered`); }
-
-        if (passed) {
-          log += `✔️ <b>Node ${i}:</b> Passed filters!\n`;
-          candidates.push({ el: nodeEl, id: i, score: 0 });
-        } else {
-          log += `<span class="log-hard">❌ <b>Node ${i}:</b> Rejected (${reasons.join(', ')})</span>\n`;
-          nodeEl.classList.add('error');
-        }
+      const isAuto = document.getElementById('auto-schedule-opt').checked;
+      if (isAuto) {
+        if (autoScheduleDebounceTimer) clearTimeout(autoScheduleDebounceTimer);
+        autoScheduleDebounceTimer = setTimeout(() => {
+          runSchedulerCore(false); // run instantly/auto-pilot
+        }, 150);
       }
+    }
 
-      if (candidates.length === 0) {
-        log += "\n😭 <b>RESULT:</b> Pod enters Pending status. No suitable nodes!";
-        document.getElementById('log-box').innerHTML = log;
-        document.getElementById('log-box').style.display = 'block';
+    function triggerManualSchedule() {
+      if (isScheduling) return;
+      synth.click();
+      runSchedulerCore(true); // run slower, showing steps and anims
+    }
+
+    // MAIN SCHEDULER ENGINE
+    function runSchedulerCore(isManualAnimate) {
+      if (isScheduling) return;
+      isScheduling = true;
+      
+      const podName = document.getElementById('pod-name').value || 'my-smart-pod';
+      const podCpu = parseFloat(document.getElementById('pod-cpu-req').value);
+      const podRam = parseFloat(document.getElementById('pod-ram-req').value);
+      const reqZone = document.getElementById('pod-node-affinity').value;
+      const avoidDb = document.getElementById('pod-anti-db').checked;
+      const tolerateGpu = document.getElementById('pod-tolerate-gpu').checked;
+      
+      const prefSsd = document.getElementById('pod-pref-ssd').checked;
+      const prefNvme = document.getElementById('pod-pref-nvme').checked;
+      const prefWeb = document.getElementById('pod-pref-web').checked;
+      const prefBalance = document.getElementById('pod-balance-resources').checked;
+
+      // Update engine states
+      document.getElementById('stat-status').innerText = "EVALUATING";
+      document.getElementById('stat-status').style.color = "var(--amber)";
+      document.getElementById('pod-deck-container').classList.add('evaluating');
+      
+      // Reset visuals
+      document.querySelectorAll('.node-card').forEach(card => {
+        card.classList.remove('scanning', 'filter-passed', 'filter-failed', 'winner-node');
+        const statusLED = card.querySelector('.status-indicator');
+        statusLED.className = 'status-indicator evaluating';
+        
+        const badge = card.querySelector('.score-badge');
+        badge.style.display = 'none';
+      });
+
+      document.querySelectorAll('.scheduled-pod-token').forEach(tok => tok.remove());
+
+      // If manual animate mode, we run a set of async steps
+      if (isManualAnimate) {
+        executeManualSchedulingWorkflow(
+          podName, podCpu, podRam, reqZone, avoidDb, tolerateGpu,
+          prefSsd, prefNvme, prefWeb, prefBalance
+        );
+      } else {
+        executeInstantSchedulingWorkflow(
+          podName, podCpu, podRam, reqZone, avoidDb, tolerateGpu,
+          prefSsd, prefNvme, prefWeb, prefBalance
+        );
+      }
+    }
+
+    // Async Manual step-by-step telemetry evaluation
+    async function executeManualSchedulingWorkflow(
+      podName, podCpu, podRam, reqZone, avoidDb, tolerateGpu,
+      prefSsd, prefNvme, prefWeb, prefBalance
+    ) {
+      const logBox = document.getElementById('log-box');
+      logBox.innerHTML = `<span class="log-info">[INIT] Initializing kube-scheduler (v1.30.0-cyber)...</span>\n`;
+      logBox.innerHTML += `<span class="log-info">[INIT] Scheduling request received for Pod: <b>${podName}</b> (CPU: ${podCpu} Cores, Memory: ${podRam} GB)</span>\n`;
+      logBox.innerHTML += `<span class="log-info">========================================================</span>\n`;
+      
+      // Step 1: Filter/Predicate Phase
+      logBox.innerHTML += `<span class="log-info">[FILTER] Running Predicate Filters on nodes...</span>\n`;
+      
+      let eligibleNodes = [];
+      
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const card = document.getElementById(`node-${node.id}`);
+        card.classList.add('scanning');
+        
+        synth.tick();
+        await sleep(350);
+        
+        card.classList.remove('scanning');
+        
+        // Predicates validation logic
+        let passed = true;
+        let reasons = [];
+        
+        // Resource Fit
+        const freeCpu = node.cpuCap * (1 - node.loadPercent/100);
+        const freeRam = node.ramCap * (1 - node.loadPercent/100);
+        
+        if (freeCpu < podCpu) {
+          passed = false;
+          reasons.push(`Insufficient CPU (${freeCpu.toFixed(1)} cores remaining)`);
+        }
+        if (freeRam < podRam) {
+          passed = false;
+          reasons.push(`Insufficient RAM (${freeRam.toFixed(1)} GB remaining)`);
+        }
+        
+        // Node Zone Affinity
+        if (reqZone !== 'any' && node.zone !== reqZone) {
+          passed = false;
+          reasons.push(`Zone mismatch (Node in ${node.zone}, requested ${reqZone})`);
+        }
+        
+        // Taints & Tolerations
+        if (node.taint === 'gpu' && !tolerateGpu) {
+          passed = false;
+          reasons.push(`Node has Taint [gpu:NoSchedule] without Pod Toleration`);
+        }
+        
+        // Pod Anti-Affinity
+        if (avoidDb && node.pods.includes('db')) {
+          passed = false;
+          reasons.push(`Anti-Affinity mismatch: Node runs Pod [DB]`);
+        }
+
+        const statusLED = card.querySelector('.status-indicator');
+        
+        if (passed) {
+          card.classList.add('filter-passed');
+          statusLED.className = 'status-indicator success';
+          eligibleNodes.push(node);
+          logBox.innerHTML += `<span class="log-success">✔️ [FILTER] Node ${node.name.toUpperCase()}: Passed filtering predicates.</span>\n`;
+        } else {
+          card.classList.add('filter-failed');
+          statusLED.className = 'status-indicator failed';
+          logBox.innerHTML += `<span class="log-error">❌ [FILTER] Node ${node.name.toUpperCase()}: Rejected! Reason: ${reasons.join(', ')}</span>\n`;
+        }
+        
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+      
+      await sleep(400);
+
+      // Step 2: Scoring Phase
+      if (eligibleNodes.length === 0) {
+        logBox.innerHTML += `\n<span class="log-error">[RESULT] ⚠️ Placement Failed! No eligible nodes found to schedule Pod: ${podName}</span>\n`;
+        logBox.innerHTML += `<span class="log-error">[RESULT] Pod state set to: <b>PENDING</b></span>\n`;
+        logBox.scrollTop = logBox.scrollHeight;
+        
+        await completeSchedulingSequence(null, podName);
         return;
       }
+      
+      logBox.innerHTML += `\n<span class="log-info">[SCORE] Running scoring plugins on remaining candidates...</span>\n`;
+      let scoredCandidates = [];
+      let maxScore = -1;
+      let winnerNode = null;
+      
+      for (let i = 0; i < eligibleNodes.length; i++) {
+        const node = eligibleNodes[i];
+        const card = document.getElementById(`node-${node.id}`);
+        let score = 0;
+        let scoreBreakdown = [];
+        
+        // SSD preference
+        if (prefSsd && node.disk === 'ssd') {
+          score += 50;
+          scoreBreakdown.push("+50 (SSD disk preference)");
+        }
+        // NVMe preference
+        if (prefNvme && node.disk === 'nvme') {
+          score += 70;
+          scoreBreakdown.push("+70 (NVMe disk preference)");
+        }
+        // Web Affinity preference
+        if (prefWeb && node.pods.includes('web')) {
+          score += 30;
+          scoreBreakdown.push("+30 (PodAffinity: Near Web workload)");
+        }
+        // Resource balancing preference
+        if (prefBalance) {
+          const freeCpu = node.cpuCap * (1 - node.loadPercent/100);
+          const freeRam = node.ramCap * (1 - node.loadPercent/100);
+          const remCpuPct = Math.max(0, (freeCpu - podCpu) / node.cpuCap);
+          const remRamPct = Math.max(0, (freeRam - podRam) / node.ramCap);
+          
+          // least requested component
+          const leastReqScore = Math.round((remCpuPct + remRamPct) * 15);
+          // balanced component
+          const balancedScore = Math.round((1 - Math.abs(remCpuPct - remRamPct)) * 20);
+          
+          score += (leastReqScore + balancedScore);
+          scoreBreakdown.push(`+${leastReqScore + balancedScore} (Balanced Resources: LeastReq=${leastReqScore}, Balanced=${balancedScore})`);
+        }
+        
+        scoredCandidates.push({ node, score });
+        
+        // Visual text count up animation for scores
+        const scoreBadge = card.querySelector('.score-badge');
+        scoreBadge.style.display = 'block';
+        scoreBadge.innerText = 'Score: 0';
+        
+        synth.tick();
+        
+        // Count up score
+        let currentCount = 0;
+        const step = Math.ceil(score / 10);
+        while (currentCount < score) {
+          currentCount = Math.min(score, currentCount + step);
+          scoreBadge.innerText = `Score: ${currentCount}`;
+          await sleep(40);
+        }
+        
+        logBox.innerHTML += `<span class="log-score">⚖️ [SCORE] Node ${node.name.toUpperCase()}: Total Score = <b>${score}</b> [Breakdown: ${scoreBreakdown.join(', ') || 'No preference hit'}]</span>\n`;
+        logBox.scrollTop = logBox.scrollHeight;
+        
+        if (score > maxScore) {
+          maxScore = score;
+          winnerNode = node;
+        } else if (score === maxScore && winnerNode !== null) {
+          // Tiebreaker: choose node with more total RAM
+          if (node.ramCap > winnerNode.ramCap) {
+            winnerNode = node;
+            logBox.innerHTML += `<span class="log-debug">⚓ [TIEBREAKER] Tied score! Selected Node ${node.name.toUpperCase()} due to larger RAM Capacity.</span>\n`;
+          }
+        }
+      }
+      
+      await sleep(300);
+      
+      // Step 3: Highlight Winner Node
+      const winCard = document.getElementById(`node-${winnerNode.id}`);
+      winCard.classList.add('winner-node');
+      
+      logBox.innerHTML += `\n<span class="log-success">🎉 [RESULT] Scheduler selected target: <b>${winnerNode.name.toUpperCase()}</b> (Score: ${maxScore})</span>\n`;
+      logBox.innerHTML += `<span class="log-success">[RESULT] Dispatching binding payload to API server...</span>\n`;
+      logBox.scrollTop = logBox.scrollHeight;
+      
+      await completeSchedulingSequence(winnerNode.id, podName);
+    }
 
-      // Scoring
-      log += "\n<b>💯 Scoring Phase:</b>\n";
-      candidates.forEach(cand => {
-        let disk = cand.el.dataset.disk;
-        let pods = cand.el.dataset.pods.split(',');
-        let scoreLog = [];
-
-        if (prefSsd && disk === 'ssd') { cand.score += 50; scoreLog.push("+50 (SSD)"); }
-        if (prefWeb && pods.includes('web')) { cand.score += 30; scoreLog.push("+30 (Near Web)"); }
-
-        log += `⚖️ <b>Node ${cand.id}:</b> Scored <span class="log-score">${cand.score} points</span> ${scoreLog.length ? '(' + scoreLog.join(', ') + ')' : ''}\n`;
-        let badge = cand.el.querySelector('.score-badge');
-        badge.innerText = `Score: ${cand.score}`;
-        badge.style.display = 'block';
-
-        if (cand.score > maxScore) { maxScore = cand.score; winnerNode = cand; }
+    // Instant Telemetry evaluation for auto-scheduling mode
+    function executeInstantSchedulingWorkflow(
+      podName, podCpu, podRam, reqZone, avoidDb, tolerateGpu,
+      prefSsd, prefNvme, prefWeb, prefBalance
+    ) {
+      const logBox = document.getElementById('log-box');
+      logBox.innerHTML = `<span class="log-info">[AUTO-PILOT] Re-evaluating scheduling paths...</span>\n`;
+      
+      let eligibleNodes = [];
+      
+      // Fast Filter Check
+      nodes.forEach(node => {
+        const card = document.getElementById(`node-${node.id}`);
+        const statusLED = card.querySelector('.status-indicator');
+        
+        let passed = true;
+        let reasons = [];
+        
+        const freeCpu = node.cpuCap * (1 - node.loadPercent/100);
+        const freeRam = node.ramCap * (1 - node.loadPercent/100);
+        
+        if (freeCpu < podCpu) { passed = false; reasons.push(`Low CPU`); }
+        if (freeRam < podRam) { passed = false; reasons.push(`Low Memory`); }
+        if (reqZone !== 'any' && node.zone !== reqZone) { passed = false; reasons.push(`Wrong zone`); }
+        if (node.taint === 'gpu' && !tolerateGpu) { passed = false; reasons.push(`GPU Tainted`); }
+        if (avoidDb && node.pods.includes('db')) { passed = false; reasons.push(`Anti-DB`); }
+        
+        if (passed) {
+          card.classList.add('filter-passed');
+          statusLED.className = 'status-indicator success';
+          eligibleNodes.push(node);
+        } else {
+          card.classList.add('filter-failed');
+          statusLED.className = 'status-indicator failed';
+          logBox.innerHTML += `<span class="log-error">❌ Filter Failed on Node ${node.name.toUpperCase()}: ${reasons.join(', ')}</span>\n`;
+        }
       });
+      
+      if (eligibleNodes.length === 0) {
+        logBox.innerHTML += `<span class="log-error">⚠️ [AUTO-PILOT] Scheduling failed: No eligible nodes. State: PENDING</span>\n`;
+        completeSchedulingSequenceInstant(null, podName);
+        return;
+      }
+      
+      // Fast Scoring
+      let maxScore = -1;
+      let winnerNode = null;
+      
+      eligibleNodes.forEach(node => {
+        const card = document.getElementById(`node-${node.id}`);
+        let score = 0;
+        
+        if (prefSsd && node.disk === 'ssd') score += 50;
+        if (prefNvme && node.disk === 'nvme') score += 70;
+        if (prefWeb && node.pods.includes('web')) score += 30;
+        if (prefBalance) {
+          const freeCpu = node.cpuCap * (1 - node.loadPercent/100);
+          const freeRam = node.ramCap * (1 - node.loadPercent/100);
+          const remCpuPct = Math.max(0, (freeCpu - podCpu) / node.cpuCap);
+          const remRamPct = Math.max(0, (freeRam - podRam) / node.ramCap);
+          const leastReqScore = Math.round((remCpuPct + remRamPct) * 15);
+          const balancedScore = Math.round((1 - Math.abs(remCpuPct - remRamPct)) * 20);
+          score += (leastReqScore + balancedScore);
+        }
+        
+        const scoreBadge = card.querySelector('.score-badge');
+        scoreBadge.style.display = 'block';
+        scoreBadge.innerText = `Score: ${score}`;
+        
+        logBox.innerHTML += `<span class="log-score">⚖️ Score Candidate ${node.name.toUpperCase()}: ${score} pts</span>\n`;
+        
+        if (score > maxScore) {
+          maxScore = score;
+          winnerNode = node;
+        } else if (score === maxScore && winnerNode !== null) {
+          if (node.ramCap > winnerNode.ramCap) {
+            winnerNode = node;
+          }
+        }
+      });
+      
+      const winCard = document.getElementById(`node-${winnerNode.id}`);
+      winCard.classList.add('winner-node');
+      
+      logBox.innerHTML += `<span class="log-success">🎉 Scheduled Pod ${podName} -> Target Node: <b>${winnerNode.name.toUpperCase()}</b></span>\n`;
+      logBox.scrollTop = logBox.scrollHeight;
+      
+      completeSchedulingSequenceInstant(winnerNode.id, podName);
+    }
 
-      log += `\n🎉 <b>RESULT:</b> Pod scheduled on <b>Node ${winnerNode.id}</b>!`;
-      winnerNode.el.classList.add('active');
-      document.getElementById('log-box').innerHTML = log;
-      document.getElementById('log-box').style.display = 'block';
+    // Handles the CSS flight animation and landing sequences
+    async function completeSchedulingSequence(winnerNodeId, podName) {
+      const flightDuration = 700;
+      animateFlightToken(winnerNodeId, podName, flightDuration);
+      
+      await sleep(flightDuration + 100);
+      
+      finishSchedulerReset(winnerNodeId);
+    }
+
+    function completeSchedulingSequenceInstant(winnerNodeId, podName) {
+      const flightDuration = 350;
+      animateFlightToken(winnerNodeId, podName, flightDuration);
+      
+      setTimeout(() => {
+        finishSchedulerReset(winnerNodeId);
+      }, flightDuration + 50);
+    }
+
+    // Creating the flying pod element and animating it to its target
+    function animateFlightToken(winnerNodeId, podName, duration) {
+      const sourcePod = document.getElementById('source-pod-visual');
+      const destSlot = winnerNodeId 
+        ? document.getElementById(`node-${winnerNodeId}-landing-slot`)
+        : document.getElementById('pending-slot');
+        
+      if (!sourcePod || !destSlot) return;
+
+      const sourceRect = sourcePod.getBoundingClientRect();
+      const destRect = destSlot.getBoundingClientRect();
+      
+      // Clear previous scheduled indicators
+      document.querySelectorAll('.scheduled-pod-token').forEach(t => t.remove());
+
+      // Create animated copy
+      const flyer = document.createElement('div');
+      flyer.className = 'flying-pod-token';
+      flyer.innerText = `📦 ${podName}`;
+      
+      // Style base sizes and initial coords
+      flyer.style.width = sourceRect.width + 'px';
+      flyer.style.height = sourceRect.height + 'px';
+      flyer.style.left = (sourceRect.left + window.scrollX) + 'px';
+      flyer.style.top = (sourceRect.top + window.scrollY) + 'px';
+      
+      document.body.appendChild(flyer);
+      
+      // Play sound
+      synth.swoosh();
+      
+      // Force reflow
+      flyer.offsetWidth;
+      
+      // Trigger CSS Transition
+      flyer.style.transition = `all ${duration}ms cubic-bezier(0.25, 1, 0.5, 1.25)`;
+      flyer.style.left = (destRect.left + window.scrollX + (destRect.width - sourceRect.width) / 2) + 'px';
+      flyer.style.top = (destRect.top + window.scrollY + (destRect.height - sourceRect.height) / 2) + 'px';
+      flyer.style.transform = 'scale(0.8)';
+      flyer.style.opacity = '0.9';
+      
+      destSlot.classList.add('targeting');
+      
+      setTimeout(() => {
+        destSlot.classList.remove('targeting');
+        if (flyer.parentNode) {
+          flyer.remove();
+        }
+        
+        // Append actual token to slot
+        if (winnerNodeId) {
+          const landed = document.createElement('div');
+          landed.className = 'scheduled-pod-token success';
+          landed.innerText = `📦 ${podName}`;
+          destSlot.appendChild(landed);
+          
+          const targetCard = document.getElementById(`node-${winnerNodeId}`);
+          targetCard.classList.add('scheduled-success');
+          setTimeout(() => targetCard.classList.remove('scheduled-success'), 800);
+          
+          synth.success();
+        } else {
+          const landed = document.createElement('div');
+          landed.className = 'scheduled-pod-token pending';
+          landed.innerText = `⚠️ PENDING`;
+          destSlot.appendChild(landed);
+          
+          synth.fail();
+        }
+      }, duration);
+    }
+
+    function finishSchedulerReset(winnerNodeId) {
+      document.getElementById('pod-deck-container').classList.remove('evaluating');
+      
+      const statusLabel = document.getElementById('stat-status');
+      const schedulerCount = document.getElementById('stat-scheduled');
+      
+      if (winnerNodeId) {
+        statusLabel.innerText = "SUCCESS";
+        statusLabel.style.color = "var(--lime)";
+        schedulerCount.innerText = "1";
+      } else {
+        statusLabel.innerText = "PENDING";
+        statusLabel.style.color = "var(--pink)";
+        schedulerCount.innerText = "0";
+      }
+      
+      // Reset node LED indicators based on final placement
+      nodes.forEach(node => {
+        const card = document.getElementById(`node-${node.id}`);
+        const indicator = card.querySelector('.status-indicator');
+        
+        if (node.id === winnerNodeId) {
+          indicator.className = 'status-indicator success';
+        } else {
+          // If it was evaluating, reset to idle/passed/failed states
+          if (card.classList.contains('filter-failed')) {
+            indicator.className = 'status-indicator failed';
+          } else {
+            indicator.className = 'status-indicator idle';
+          }
+        }
+      });
+      
+      isScheduling = false;
+      
+      // Auto-select winner node to show its YAML manifest!
+      if (winnerNodeId) {
+        selectNode(winnerNodeId);
+      }
+      
+      updateYamlView();
+    }
+
+    // Helper sleep timer
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // TAB MANAGEMENT
+    function switchTab(tabId) {
+      currentTab = tabId;
+      document.getElementById('tab-btn-logs').classList.remove('active');
+      document.getElementById('tab-btn-yaml').classList.remove('active');
+      document.getElementById('logs-tab-content').classList.remove('active');
+      document.getElementById('yaml-tab-content').classList.remove('active');
+
+      if (tabId === 'logs') {
+        document.getElementById('tab-btn-logs').classList.add('active');
+        document.getElementById('logs-tab-content').classList.add('active');
+      } else {
+        document.getElementById('tab-btn-yaml').classList.add('active');
+        document.getElementById('yaml-tab-content').classList.add('active');
+      }
+      synth.click();
+    }
+
+    function switchYamlSubtab(subtabId) {
+      currentYamlSubtab = subtabId;
+      document.getElementById('subtab-btn-pod').classList.remove('active');
+      document.getElementById('subtab-btn-node').classList.remove('active');
+      document.getElementById('subtab-btn-scheduler').classList.remove('active');
+
+      document.getElementById(`subtab-btn-${subtabId}`).classList.add('active');
+      
+      synth.click();
+      updateYamlView();
+    }
+
+    function showPodYamlFromDeck() {
+      switchTab('yaml');
+      switchYamlSubtab('pod');
+    }
+
+    // MANIFEST GENERATION & HIGHLIGHTS
+    function updateYamlView() {
+      const box = document.getElementById('yaml-box-content');
+      let yamlText = '';
+
+      if (currentYamlSubtab === 'pod') {
+        yamlText = generatePodYaml();
+      } else if (currentYamlSubtab === 'node') {
+        yamlText = generateNodeYaml();
+      } else if (currentYamlSubtab === 'scheduler') {
+        yamlText = generateSchedulerYaml();
+      }
+
+      box.innerHTML = highlightYamlSyntax(yamlText);
+    }
+
+    function generatePodYaml() {
+      const pName = document.getElementById('pod-name').value || 'my-smart-pod';
+      const pCpu = parseFloat(document.getElementById('pod-cpu-req').value);
+      const pRam = parseFloat(document.getElementById('pod-ram-req').value);
+      const reqZone = document.getElementById('pod-node-affinity').value;
+      const avoidDb = document.getElementById('pod-anti-db').checked;
+      const tolerateGpu = document.getElementById('pod-tolerate-gpu').checked;
+      
+      const prefSsd = document.getElementById('pod-pref-ssd').checked;
+      const prefNvme = document.getElementById('pod-pref-nvme').checked;
+      const prefWeb = document.getElementById('pod-pref-web').checked;
+
+      let yaml = `# 📦 Manifest specification for target Pod: ${pName}\n`;
+      yaml += `apiVersion: v1\n`;
+      yaml += `kind: Pod\n`;
+      yaml += `metadata:\n`;
+      yaml += `  name: ${pName}\n`;
+      yaml += `  labels:\n`;
+      yaml += `    app: web-service\n`;
+      yaml += `spec:\n`;
+      yaml += `  containers:\n`;
+      yaml += `  - name: app-container\n`;
+      yaml += `    image: nginx:alpine\n`;
+      yaml += `    resources:\n`;
+      yaml += `      requests:\n`;
+      yaml += `        cpu: "${pCpu.toFixed(1)}"\n`;
+      yaml += `        memory: "${pRam.toFixed(1)}Gi"\n`;
+      yaml += `      limits:\n`;
+      yaml += `        cpu: "${(pCpu * 2).toFixed(1)}"\n`;
+      yaml += `        memory: "${(pRam * 1.5).toFixed(1)}Gi"\n`;
+
+      let hasAffinity = (reqZone !== 'any' || prefSsd || prefNvme || prefWeb || avoidDb);
+      if (hasAffinity) {
+        yaml += `  affinity:\n`;
+      }
+
+      if (reqZone !== 'any' || prefSsd || prefNvme) {
+        yaml += `    nodeAffinity:\n`;
+        if (reqZone !== 'any') {
+          yaml += `      requiredDuringSchedulingIgnoredDuringExecution:\n`;
+          yaml += `        nodeSelectorTerms:\n`;
+          yaml += `        - matchExpressions:\n`;
+          yaml += `          - key: topology.kubernetes.io/zone\n`;
+          yaml += `            operator: In\n`;
+          yaml += `            values:\n`;
+          yaml += `            - ${reqZone}\n`;
+        }
+        if (prefSsd || prefNvme) {
+          yaml += `      preferredDuringSchedulingIgnoredDuringExecution:\n`;
+          if (prefNvme) {
+            yaml += `      - weight: 70\n`;
+            yaml += `        preference:\n`;
+            yaml += `          matchExpressions:\n`;
+            yaml += `          - key: disk\n`;
+            yaml += `            operator: In\n`;
+            yaml += `            values:\n`;
+            yaml += `            - nvme\n`;
+          }
+          if (prefSsd) {
+            yaml += `      - weight: 50\n`;
+            yaml += `        preference:\n`;
+            yaml += `          matchExpressions:\n`;
+            yaml += `          - key: disk\n`;
+            yaml += `            operator: In\n`;
+            yaml += `            values:\n`;
+            yaml += `            - ssd\n`;
+          }
+        }
+      }
+
+      if (prefWeb) {
+        yaml += `    podAffinity:\n`;
+        yaml += `      preferredDuringSchedulingIgnoredDuringExecution:\n`;
+        yaml += `      - weight: 30\n`;
+        yaml += `        podAffinityTerm:\n`;
+        yaml += `          labelSelector:\n`;
+        yaml += `            matchLabels:\n`;
+          yaml += `              app: web\n`;
+        yaml += `          topologyKey: kubernetes.io/hostname\n`;
+      }
+
+      if (avoidDb) {
+        yaml += `    podAntiAffinity:\n`;
+        yaml += `      requiredDuringSchedulingIgnoredDuringExecution:\n`;
+        yaml += `      - labelSelector:\n`;
+        yaml += `          matchLabels:\n`;
+        yaml += `            app: db\n`;
+        yaml += `        topologyKey: kubernetes.io/hostname\n`;
+      }
+
+      if (tolerateGpu) {
+        yaml += `  tolerations:\n`;
+        yaml += `  - key: "gpu"\n`;
+        yaml += `    operator: "Exists"\n`;
+        yaml += `    effect: "NoSchedule"\n`;
+      }
+
+      return yaml;
+    }
+
+    function generateNodeYaml() {
+      const node = nodes.find(n => n.id === selectedNodeId) || nodes[0];
+      const allocCpu = (node.cpuCap * (1 - node.loadPercent/100)).toFixed(1);
+      const allocRam = (node.ramCap * (1 - node.loadPercent/100)).toFixed(1);
+
+      let yaml = `# 🖥️ Telemetry Spec for Node: ${node.name}\n`;
+      yaml += `apiVersion: v1\n`;
+      yaml += `kind: Node\n`;
+      yaml += `metadata:\n`;
+      yaml += `  name: ${node.name}\n`;
+      yaml += `  labels:\n`;
+      yaml += `    kubernetes.io/hostname: ${node.name}\n`;
+      yaml += `    topology.kubernetes.io/zone: ${node.zone}\n`;
+      yaml += `    disk: ${node.disk}\n`;
+      if (node.pods.length > 0) {
+        yaml += `    active-workloads: "${node.pods.join('-')}"\n`;
+      }
+      
+      if (node.taint === 'gpu') {
+        yaml += `spec:\n`;
+        yaml += `  taints:\n`;
+        yaml += `  - key: "gpu"\n`;
+        yaml += `    value: "true"\n`;
+        yaml += `    effect: "NoSchedule"\n`;
+      } else {
+        yaml += `spec:\n`;
+        yaml += `  taints: []\n`;
+      }
+      
+      yaml += `status:\n`;
+      yaml += `  capacity:\n`;
+      yaml += `    cpu: "${node.cpuCap.toFixed(1)}"\n`;
+      yaml += `    memory: "${node.ramCap.toFixed(1)}Gi"\n`;
+      yaml += `  allocatable:\n`;
+      yaml += `    cpu: "${allocCpu}"\n`;
+      yaml += `    memory: "${allocRam}Gi"\n`;
+      
+      return yaml;
+    }
+
+    function generateSchedulerYaml() {
+      const prefBalance = document.getElementById('pod-balance-resources').checked;
+      
+      let yaml = `# ⚙️ kube-scheduler Custom Profile Configuration\n`;
+      yaml += `apiVersion: kubescheduler.config.k8s.io/v1\n`;
+      yaml += `kind: KubeSchedulerConfiguration\n`;
+      yaml += `leaderElection:\n`;
+      yaml += `  leaderElect: true\n`;
+      yaml += `profiles:\n`;
+      yaml += `- schedulerName: custom-telemetry-scheduler\n`;
+      yaml += `  plugins:\n`;
+      yaml += `    preFilter:\n`;
+      yaml += `      enabled:\n`;
+      yaml += `      - name: "NodeResourcesFit"\n`;
+      yaml += `      - name: "NodePorts"\n`;
+      yaml += `    filter:\n`;
+      yaml += `      enabled:\n`;
+      yaml += `      - name: "NodeResourcesFit"\n`;
+      yaml += `      - name: "NodeName"\n`;
+      yaml += `      - name: "NodePorts"\n`;
+      yaml += `      - name: "NodeAffinity"\n`;
+      yaml += `      - name: "NodeTaints"\n`;
+      yaml += `      - name: "PodTopologySpread"\n`;
+      yaml += `    score:\n`;
+      yaml += `      enabled:\n`;
+      yaml += `      - name: "NodeAffinity"\n`;
+      yaml += `        weight: 3\n`;
+      yaml += `      - name: "PodTopologySpread"\n`;
+      yaml += `        weight: 2\n`;
+      if (prefBalance) {
+        yaml += `      - name: "NodeResourcesBalancedAllocation"\n`;
+        yaml += `        weight: 5\n`;
+        yaml += `      - name: "NodeResourcesLeastAllocated"\n`;
+        yaml += `        weight: 4\n`;
+      }
+      yaml += `      - name: "ImageLocality"\n`;
+      yaml += `        weight: 1\n`;
+      
+      return yaml;
+    }
+
+    function highlightYamlSyntax(yaml) {
+      return yaml
+        // Comments
+        .replace(/(^#.*$)/gm, '<span class="yaml-comment">$1</span>')
+        // Keys
+        .replace(/^([\s-]*)([\w.-]+):/gm, '$1<span class="yaml-key">$2</span>:')
+        // Strings
+        .replace(/(:\s*)("[^"]*")/g, '$1<span class="yaml-string">$2</span>')
+        // Numbers
+        .replace(/(:\s*)([0-9.]+(?:Gi|Mi|Cores)?)\b/g, '$1<span class="yaml-number">$2</span>')
+        // Keywords / Boolean
+        .replace(/(:\s*)(true|false|NoSchedule|Exists|In|\[\])\b/g, '$1<span class="yaml-keyword">$2</span>');
+    }
+
+    // Copies current active yaml text to clipboard
+    function copyYamlText() {
+      let yamlText = '';
+      if (currentYamlSubtab === 'pod') {
+        yamlText = generatePodYaml();
+      } else if (currentYamlSubtab === 'node') {
+        yamlText = generateNodeYaml();
+      } else if (currentYamlSubtab === 'scheduler') {
+        yamlText = generateSchedulerYaml();
+      }
+      
+      navigator.clipboard.writeText(yamlText).then(() => {
+        synth.success();
+        
+        // Show toaster notification
+        const toast = document.getElementById('toast-notify');
+        toast.innerText = `${currentYamlSubtab.toUpperCase()} MANIFEST COPIED TO CLIPBOARD!`;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+      }).catch(err => {
+        console.error("Clipboard copy failed:", err);
+      });
     }
   </script>
 </body>
